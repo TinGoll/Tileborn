@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 // Note, the above license and copyright applies to this file only.
-package io.github.some_example_name.lwjgl3
+package game.desktop
 
 import com.badlogic.gdx.Version
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3NativesLoader

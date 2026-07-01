@@ -9,8 +9,9 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  namespace = "io.github.some_example_name"
-  compileSdk = 35
+  namespace = "game.android"
+  compileSdk = 36
+  buildToolsVersion = "36.1.0"
   sourceSets {
     main {
       manifest.srcFile 'AndroidManifest.xml'
@@ -31,7 +32,7 @@ android {
 		}
   }
   defaultConfig {
-    applicationId 'io.github.some_example_name'
+    applicationId 'game.android'
     minSdkVersion 21
     targetSdkVersion 35
     versionCode 1
@@ -64,7 +65,7 @@ dependencies {
   coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
   implementation "com.badlogicgames.gdx-controllers:gdx-controllers-android:$gdxControllersVersion"
   implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-  implementation project(':core')
+  implementation project(':client')
 
   natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a"
   natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a"
@@ -127,7 +128,7 @@ tasks.register('run', Exec) {
   }
 
   def adb = path + "/platform-tools/adb"
-  commandLine "$adb", 'shell', 'am', 'start', '-n', 'io.github.some_example_name/io.github.some_example_name.android.AndroidLauncher'
+  commandLine "$adb", 'shell', 'am', 'start', '-n', 'game.android/game.android.AndroidLauncher'
 }
 
 eclipse.project.name = appName + "-android"

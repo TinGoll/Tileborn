@@ -3,9 +3,9 @@
 gradle-app.setting
 /build/
 /android/build/
-/core/build/
+/client/build/
 /lwjgl2/build/
-/lwjgl3/build/
+/desktop/build/
 /html/build/
 /teavm/build/
 /ios/build/
@@ -67,9 +67,9 @@ www-test/
 .project
 .metadata/
 /android/bin/
-/core/bin/
+/client/bin/
 /lwjgl2/bin/
-/lwjgl3/bin/
+/desktop/bin/
 /html/bin/
 /teavm/bin/
 /ios/bin/
@@ -91,9 +91,9 @@ www-test/
 
 /nbproject/private/
 /android/nbproject/private/
-/core/nbproject/private/
+/client/nbproject/private/
 /lwjgl2/nbproject/private/
-/lwjgl3/nbproject/private/
+/desktop/nbproject/private/
 /html/nbproject/private/
 /teavm/nbproject/private/
 /ios/nbproject/private/
@@ -104,9 +104,9 @@ www-test/
 
 /nbbuild/
 /android/nbbuild/
-/core/nbbuild/
+/client/nbbuild/
 /lwjgl2/nbbuild/
-/lwjgl3/nbbuild/
+/desktop/nbbuild/
 /html/nbbuild/
 /teavm/nbbuild/
 /ios/nbbuild/
@@ -117,9 +117,9 @@ www-test/
 
 /dist/
 /android/dist/
-/core/dist/
+/client/dist/
 /lwjgl2/dist/
-/lwjgl3/dist/
+/desktop/dist/
 /html/dist/
 /teavm/dist/
 /ios/dist/
@@ -130,9 +130,9 @@ www-test/
 
 /nbdist/
 /android/nbdist/
-/core/nbdist/
+/client/nbdist/
 /lwjgl2/nbdist/
-/lwjgl3/nbdist/
+/desktop/nbdist/
 /html/nbdist/
 /teavm/nbdist/
 /ios/nbdist/

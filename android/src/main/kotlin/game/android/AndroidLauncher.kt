@@ -1,10 +1,10 @@
-package io.github.some_example_name.android
+package game.android
 
 import android.os.Bundle
 
 import com.badlogic.gdx.backends.android.AndroidApplication
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration
-import io.github.some_example_name.Main
+import game.client.Main
 
 /** Launches the Android application. */
 class AndroidLauncher : AndroidApplication() {

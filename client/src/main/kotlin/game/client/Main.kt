@@ -1,4 +1,4 @@
-package io.github.some_example_name
+package game.client
 
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.Texture.TextureFilter.Linear
