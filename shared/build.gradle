@@ -1,6 +1,8 @@
 eclipse.project.name = appName + '-shared'
 
 dependencies {
+  api "com.badlogicgames.ashley:ashley:$ashleyVersion"
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
   testImplementation "junit:junit:4.13.2"
 }
