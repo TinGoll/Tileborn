@@ -102,11 +102,11 @@ anti-cheat boundaries
 
 ## Module structure
 
-Recommended project structure:
+Current Gradle module structure:
 
 ```text id="hdj3n3"
-game/
-  shared/
+shared/
+  src/main/kotlin/game/shared/
     ecs/
     protocol/
     constants/
@@ -115,7 +115,8 @@ game/
     map/
     serialization/
 
-  client/
+client/
+  src/main/kotlin/game/client/
     app/
     screens/
     assets/
@@ -127,7 +128,8 @@ game/
     debug/
     world/
 
-  server/
+server/
+  src/main/kotlin/game/server/
     app/
     loop/
     network/
@@ -138,13 +140,13 @@ game/
     interest/
     validation/
 
-desktop/
-android/
-server-launcher/
+desktop/  # game.desktop; depends on client
+android/  # game.android; depends on client
 assets/
 ```
 
-The exact Gradle layout may differ, but the logical separation should remain.
+Dependency direction is `desktop -> client -> shared`, `android -> client -> shared`, and
+`server -> shared`. The server does not depend on client or platform modules.
 
 ---
 

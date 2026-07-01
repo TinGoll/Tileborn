@@ -9,7 +9,7 @@ if (JavaVersion.current().isJava9Compatible()) {
 }
 kotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
 
-application.mainClass = 'io.github.some_example_name.server.ServerLauncher'
+application.mainClass = 'game.server.ServerLauncher'
 application.applicationName = appName
 eclipse.project.name = appName + '-server'
 
