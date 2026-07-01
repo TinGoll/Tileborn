@@ -3,6 +3,7 @@ package game.client
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.Texture.TextureFilter.Linear
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import game.client.ecs.ClientEcsWorld
 import ktx.app.KtxGame
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
@@ -11,9 +12,17 @@ import ktx.assets.toInternalFile
 import ktx.graphics.use
 
 class Main : KtxGame<KtxScreen>() {
+    private lateinit var ecsWorld: ClientEcsWorld
+
     override fun create() {
+        ecsWorld = ClientEcsWorld()
         addScreen(FirstScreen())
         setScreen<FirstScreen>()
+    }
+
+    override fun dispose() {
+        super.dispose()
+        ecsWorld.engine.removeAllEntities()
     }
 }
 
