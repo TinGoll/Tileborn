@@ -1,33 +1,62 @@
 package game.client
 
-import com.badlogic.gdx.graphics.Texture
-import com.badlogic.gdx.graphics.Texture.TextureFilter.Linear
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import game.client.assets.AssetDescriptors
+import game.client.assets.GameAssetManager
 import game.client.ecs.ClientEcsWorld
 import ktx.app.KtxGame
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
-import ktx.assets.toInternalFile
 import ktx.graphics.use
 
 class Main : KtxGame<KtxScreen>() {
+    private lateinit var assets: GameAssetManager
     private lateinit var ecsWorld: ClientEcsWorld
 
     override fun create() {
+        assets = GameAssetManager()
         ecsWorld = ClientEcsWorld()
-        addScreen(FirstScreen())
+        assets.queueCommonAssets()
+        assets.queueMapAssets(AssetDescriptors.DEBUG_MAP_ID)
+        addScreen(LoadingScreen(assets) { showGameScreen() })
+        setScreen<LoadingScreen>()
+    }
+
+    private fun showGameScreen() {
+        addScreen(FirstScreen(assets))
         setScreen<FirstScreen>()
+        removeScreen<LoadingScreen>()?.dispose()
     }
 
     override fun dispose() {
         super.dispose()
-        ecsWorld.engine.removeAllEntities()
+        if (::ecsWorld.isInitialized) {
+            ecsWorld.engine.removeAllEntities()
+        }
+        if (::assets.isInitialized) {
+            assets.dispose()
+        }
     }
 }
 
-class FirstScreen : KtxScreen {
-    private val image = Texture("logo.png".toInternalFile(), true).apply { setFilter(Linear, Linear) }
+class LoadingScreen(
+    private val assets: GameAssetManager,
+    private val onFinished: () -> Unit,
+) : KtxScreen {
+    private var transitionStarted = false
+
+    override fun render(delta: Float) {
+        clearScreen(red = 0.1f, green = 0.1f, blue = 0.1f)
+        if (!transitionStarted && assets.update()) {
+            transitionStarted = true
+            onFinished()
+        }
+    }
+}
+
+class FirstScreen(assets: GameAssetManager) : KtxScreen {
+    private val image = assets.get(AssetDescriptors.LOGO)
     private val batch = SpriteBatch()
 
     override fun render(delta: Float) {
@@ -38,7 +67,6 @@ class FirstScreen : KtxScreen {
     }
 
     override fun dispose() {
-        image.disposeSafely()
         batch.disposeSafely()
     }
 }
