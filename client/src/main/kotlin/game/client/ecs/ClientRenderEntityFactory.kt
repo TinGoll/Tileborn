@@ -3,15 +3,22 @@ package game.client.ecs
 import com.badlogic.ashley.core.Engine
 import com.badlogic.ashley.core.Entity
 import game.client.ecs.component.CameraTargetComponent
+import game.client.ecs.component.LocalPlayerComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
+import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.TransformComponent
+import game.shared.ecs.component.VelocityComponent
+import game.shared.map.GameMapData
 
 /** Creates the temporary primitive-rendered entities used by the client MVP. */
 object ClientRenderEntityFactory {
     fun createTestPlayer(engine: Engine, x: Float, y: Float): Entity =
         engine.createEntity().apply {
             add(TransformComponent(x = x, y = y))
+            add(VelocityComponent())
+            add(PlayerInputComponent())
+            add(LocalPlayerComponent())
             add(
                 RenderPrimitiveComponent(
                     shape = PrimitiveShape.CIRCLE,
@@ -23,4 +30,27 @@ object ClientRenderEntityFactory {
             )
             add(CameraTargetComponent())
         }.also(engine::addEntity)
+
+    /** Makes otherwise invisible Tiled collision geometry visible during primitive-rendered MVP development. */
+    fun createDebugCollisionGeometry(engine: Engine, mapData: GameMapData): List<Entity> =
+        mapData.collisionObjects.map { collision ->
+            engine.createEntity().apply {
+                add(
+                    TransformComponent(
+                        x = collision.x + collision.width * 0.5f,
+                        y = collision.y + collision.height * 0.5f,
+                    ),
+                )
+                add(
+                    RenderPrimitiveComponent(
+                        shape = PrimitiveShape.RECTANGLE,
+                        red = 0.18f,
+                        green = 0.22f,
+                        blue = 0.28f,
+                        width = collision.width,
+                        height = collision.height,
+                    ),
+                )
+            }.also(engine::addEntity)
+        }
 }
