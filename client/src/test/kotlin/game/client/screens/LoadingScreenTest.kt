@@ -2,6 +2,7 @@ package game.client.screens
 
 import com.badlogic.gdx.assets.AssetManager
 import game.client.assets.GameAssetManager
+import game.client.ecs.ClientEcsWorld
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -26,7 +27,7 @@ class LoadingScreenTest {
     @Test
     fun `game screen receives the ready asset manager`() {
         GameAssetManager().use { assets ->
-            val screen = GameScreen(assets)
+            val screen = GameScreen(assets, ClientEcsWorld())
 
             assertSame(assets, screen.assets)
         }
@@ -37,7 +38,7 @@ class LoadingScreenTest {
         GameAssetManager().use { assets ->
             assets.queueCommonAssets()
 
-            GameScreen(assets)
+            GameScreen(assets, ClientEcsWorld())
         }
     }
 

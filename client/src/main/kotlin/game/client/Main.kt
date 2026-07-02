@@ -19,7 +19,7 @@ class Main : KtxGame<KtxScreen>() {
     }
 
     private fun showGameScreen() {
-        addScreen(GameScreen(assets))
+        addScreen(GameScreen(assets, ecsWorld))
         setScreen<GameScreen>()
         removeScreen<LoadingScreen>()?.dispose()
     }
