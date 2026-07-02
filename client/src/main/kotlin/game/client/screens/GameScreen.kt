@@ -47,6 +47,7 @@ class GameScreen(
             )
 
             val spawn = mapData!!.requireSpawnPoint("default")
+            ClientRenderEntityFactory.createDebugCollisionGeometry(ecsWorld.engine, mapData!!)
             ClientRenderEntityFactory.createTestPlayer(ecsWorld.engine, spawn.x, spawn.y)
 
             cameraFollowSystem = CameraFollowSystem(camera).also(ecsWorld.engine::addSystem)
