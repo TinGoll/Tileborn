@@ -12,6 +12,9 @@ class RenderPrimitiveComponent(
     var radius: Float = 0.5f,
     var width: Float = 1f,
     var height: Float = 1f,
+    var lineEndOffsetX: Float = 1f,
+    var lineEndOffsetY: Float = 0f,
+    var lineWidth: Float = 0.05f,
 ) : Component
 
 enum class PrimitiveShape {
