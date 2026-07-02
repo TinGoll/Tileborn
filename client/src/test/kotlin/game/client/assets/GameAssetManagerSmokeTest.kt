@@ -1,6 +1,7 @@
 package game.client.assets
 
 import com.badlogic.gdx.assets.AssetManager
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,6 +26,20 @@ class GameAssetManagerSmokeTest {
         GameAssetManager(delegate).dispose()
 
         assertTrue(delegate.wasDisposed)
+    }
+
+    @Test
+    fun `queueing the same scopes repeatedly does not duplicate assets`() {
+        val delegate = AssetManager()
+
+        GameAssetManager(delegate).use { assets ->
+            repeat(2) {
+                assets.queueCommonAssets()
+                assets.queueMapAssets(AssetDescriptors.DEBUG_MAP_ID)
+            }
+
+            assertEquals(2, delegate.queuedAssets)
+        }
     }
 
     private class RecordingAssetManager : AssetManager() {
