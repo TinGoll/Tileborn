@@ -25,6 +25,8 @@ class GameAssetManager(
 
     fun update(): Boolean = manager.update()
 
+    fun finishLoading() = manager.finishLoading()
+
     fun getProgress(): Float = manager.progress
 
     fun isFinished(): Boolean = manager.isFinished
