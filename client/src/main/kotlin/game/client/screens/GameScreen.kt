@@ -1,8 +1,10 @@
 package game.client.screens
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
+import com.badlogic.gdx.physics.box2d.Body
 import game.client.assets.AssetDescriptors
 import game.client.assets.GameAssetManager
 import game.client.ecs.ClientEcsWorld
@@ -13,6 +15,7 @@ import game.client.ecs.system.PrimitiveRenderSystem
 import game.shared.map.GameMapData
 import game.shared.map.TiledGameplayMapParser
 import game.shared.math.WorldUnits
+import game.shared.physics.TiledCollisionLoader
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
@@ -28,6 +31,8 @@ class GameScreen(
     private var cameraFollowSystem: CameraFollowSystem? = null
     private var mapRenderSystem: MapRenderSystem? = null
     private var primitiveRenderSystem: PrimitiveRenderSystem? = null
+    private val collisionBodies = mutableListOf<Body>()
+    private val screenEntities = mutableListOf<Entity>()
 
     init {
         check(assets.isFinished()) {
@@ -47,8 +52,14 @@ class GameScreen(
             )
 
             val spawn = mapData!!.requireSpawnPoint("default")
-            ClientRenderEntityFactory.createDebugCollisionGeometry(ecsWorld.engine, mapData!!)
-            ClientRenderEntityFactory.createTestPlayer(ecsWorld.engine, spawn.x, spawn.y)
+            collisionBodies += TiledCollisionLoader(ecsWorld.physicsWorld).load(mapData!!)
+            screenEntities += ClientRenderEntityFactory.createDebugCollisionGeometry(ecsWorld.engine, mapData!!)
+            screenEntities += ClientRenderEntityFactory.createTestPlayer(
+                ecsWorld.engine,
+                ecsWorld.physicsWorld,
+                spawn.x,
+                spawn.y,
+            )
 
             cameraFollowSystem = CameraFollowSystem(camera).also(ecsWorld.engine::addSystem)
             mapRenderSystem = MapRenderSystem(camera, mapRenderer!!).also(ecsWorld.engine::addSystem)
@@ -71,6 +82,10 @@ class GameScreen(
     }
 
     override fun dispose() {
+        screenEntities.forEach(ecsWorld.engine::removeEntity)
+        screenEntities.clear()
+        collisionBodies.forEach(ecsWorld.physicsWorld::destroyBody)
+        collisionBodies.clear()
         cameraFollowSystem?.let(ecsWorld.engine::removeSystem)
         cameraFollowSystem = null
         mapRenderSystem?.let(ecsWorld.engine::removeSystem)

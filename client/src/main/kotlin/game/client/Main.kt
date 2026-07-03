@@ -31,7 +31,7 @@ class Main(
     override fun dispose() {
         super.dispose()
         if (::ecsWorld.isInitialized) {
-            ecsWorld.engine.removeAllEntities()
+            ecsWorld.dispose()
         }
         if (::assets.isInitialized) {
             assets.dispose()

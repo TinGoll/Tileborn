@@ -18,6 +18,8 @@ dependencies {
   api "space.earlygrey:shapedrawer:$shapeDrawerVersion"
   api project(':shared')
   testImplementation "junit:junit:4.13.2"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
 
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
