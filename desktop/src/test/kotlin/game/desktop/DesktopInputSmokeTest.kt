@@ -14,12 +14,18 @@ class DesktopInputSmokeTest {
     fun `desktop keyboard input moves local player upward`() {
         val source = KeyboardInputSource { key -> key == Input.Keys.W }
         val world = ClientEcsWorld(source)
-        val player = ClientRenderEntityFactory.createTestPlayer(world.engine, x = 3f, y = 4f)
+        val player = ClientRenderEntityFactory.createTestPlayer(
+            world.engine,
+            world.physicsWorld,
+            x = 3f,
+            y = 4f,
+        )
 
         world.engine.update(0.5f)
 
         val transform = player.getComponent(TransformComponent::class.java)
         assertEquals(3f, transform.x, 0f)
         assertTrue(transform.y > 4f)
+        world.dispose()
     }
 }

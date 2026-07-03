@@ -6,10 +6,12 @@ import game.client.ecs.component.LocalPlayerComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
 import game.shared.map.MapCollisionObject
+import game.shared.physics.PhysicsWorldFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -18,8 +20,9 @@ class ClientRenderEntityFactoryTest {
     @Test
     fun `test player has transform circle render data and camera target`() {
         val engine = Engine()
+        val physicsWorld = PhysicsWorldFactory.create()
 
-        val player = ClientRenderEntityFactory.createTestPlayer(engine, x = 5f, y = 6f)
+        val player = ClientRenderEntityFactory.createTestPlayer(engine, physicsWorld, x = 5f, y = 6f)
 
         val transform = player.getComponent(TransformComponent::class.java)
         val render = player.getComponent(RenderPrimitiveComponent::class.java)
@@ -30,7 +33,9 @@ class ClientRenderEntityFactoryTest {
         assertNotNull(player.getComponent(LocalPlayerComponent::class.java))
         assertNotNull(player.getComponent(PlayerInputComponent::class.java))
         assertNotNull(player.getComponent(VelocityComponent::class.java))
+        assertNotNull(player.getComponent(PhysicsBodyComponent::class.java))
         assertEquals(1, engine.entities.size())
+        physicsWorld.dispose()
     }
 
     @Test

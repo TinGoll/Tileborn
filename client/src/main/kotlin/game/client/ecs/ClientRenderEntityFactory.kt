@@ -2,21 +2,25 @@ package game.client.ecs
 
 import com.badlogic.ashley.core.Engine
 import com.badlogic.ashley.core.Entity
+import com.badlogic.gdx.physics.box2d.World
 import game.client.ecs.component.CameraTargetComponent
 import game.client.ecs.component.LocalPlayerComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
+import game.shared.physics.PhysicsWorldFactory
 
 /** Creates the temporary primitive-rendered entities used by the client MVP. */
 object ClientRenderEntityFactory {
-    fun createTestPlayer(engine: Engine, x: Float, y: Float): Entity =
+    fun createTestPlayer(engine: Engine, physicsWorld: World, x: Float, y: Float): Entity =
         engine.createEntity().apply {
             add(TransformComponent(x = x, y = y))
             add(VelocityComponent())
+            add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, x, y)))
             add(PlayerInputComponent())
             add(LocalPlayerComponent())
             add(

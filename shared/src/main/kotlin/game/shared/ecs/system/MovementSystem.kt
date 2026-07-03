@@ -6,6 +6,7 @@ import com.badlogic.ashley.core.Family
 import com.badlogic.ashley.systems.IteratingSystem
 import game.shared.constants.GameConstants
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 
@@ -17,9 +18,11 @@ class MovementSystem : IteratingSystem(FAMILY, PRIORITY) {
         velocity.x = input.moveX * GameConstants.PLAYER_MOVE_SPEED
         velocity.y = input.moveY * GameConstants.PLAYER_MOVE_SPEED
 
-        val transform = TRANSFORM_MAPPER.get(entity)
-        transform.x += velocity.x * deltaTime
-        transform.y += velocity.y * deltaTime
+        if (!PHYSICS_BODY_MAPPER.has(entity)) {
+            val transform = TRANSFORM_MAPPER.get(entity)
+            transform.x += velocity.x * deltaTime
+            transform.y += velocity.y * deltaTime
+        }
     }
 
     private companion object {
@@ -30,6 +33,8 @@ class MovementSystem : IteratingSystem(FAMILY, PRIORITY) {
             ComponentMapper.getFor(VelocityComponent::class.java)
         val TRANSFORM_MAPPER: ComponentMapper<TransformComponent> =
             ComponentMapper.getFor(TransformComponent::class.java)
+        val PHYSICS_BODY_MAPPER: ComponentMapper<PhysicsBodyComponent> =
+            ComponentMapper.getFor(PhysicsBodyComponent::class.java)
         val FAMILY: Family = Family.all(
             PlayerInputComponent::class.java,
             VelocityComponent::class.java,
