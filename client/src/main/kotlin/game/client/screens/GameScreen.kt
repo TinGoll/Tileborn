@@ -5,8 +5,12 @@ import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 import com.badlogic.gdx.physics.box2d.Body
+import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer
 import game.client.assets.AssetDescriptors
 import game.client.assets.GameAssetManager
+import game.client.debug.ConnectionState
+import game.client.debug.DebugOverlay
+import game.client.debug.DebugOverlaySnapshotBuilder
 import game.client.ecs.ClientEcsWorld
 import game.client.ecs.ClientRenderEntityFactory
 import game.client.ecs.system.CameraFollowSystem
@@ -31,6 +35,8 @@ class GameScreen(
     private var cameraFollowSystem: CameraFollowSystem? = null
     private var mapRenderSystem: MapRenderSystem? = null
     private var primitiveRenderSystem: PrimitiveRenderSystem? = null
+    private var physicsDebugRenderer: Box2DDebugRenderer? = null
+    private var debugOverlay: DebugOverlay? = null
     private val collisionBodies = mutableListOf<Body>()
     private val screenEntities = mutableListOf<Entity>()
 
@@ -64,6 +70,14 @@ class GameScreen(
             cameraFollowSystem = CameraFollowSystem(camera).also(ecsWorld.engine::addSystem)
             mapRenderSystem = MapRenderSystem(camera, mapRenderer!!).also(ecsWorld.engine::addSystem)
             primitiveRenderSystem = PrimitiveRenderSystem(camera).also(ecsWorld.engine::addSystem)
+            physicsDebugRenderer = Box2DDebugRenderer()
+            debugOverlay = DebugOverlay(
+                DebugOverlaySnapshotBuilder(
+                    engine = ecsWorld.engine,
+                    mapIdProvider = { mapData?.mapId },
+                    connectionStateProvider = { ConnectionState.LOCAL },
+                ),
+            )
             cameraFollowSystem?.update(0f)
             resize(Gdx.graphics.width, Gdx.graphics.height)
         }
@@ -72,6 +86,8 @@ class GameScreen(
     override fun render(delta: Float) {
         clearScreen(red = 0.7f, green = 0.7f, blue = 0.7f)
         ecsWorld.engine.update(delta)
+        physicsDebugRenderer?.render(ecsWorld.physicsWorld, camera.combined)
+        debugOverlay?.render()
     }
 
     override fun resize(width: Int, height: Int) {
@@ -95,6 +111,10 @@ class GameScreen(
             it.dispose()
         }
         primitiveRenderSystem = null
+        physicsDebugRenderer.disposeSafely()
+        physicsDebugRenderer = null
+        debugOverlay.disposeSafely()
+        debugOverlay = null
         mapRenderer.disposeSafely()
         mapRenderer = null
         mapData = null
