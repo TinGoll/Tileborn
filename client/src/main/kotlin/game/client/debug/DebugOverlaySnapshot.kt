@@ -8,4 +8,5 @@ data class DebugOverlaySnapshot(
     val entityCount: Int,
     val mapId: String,
     val connectionState: ConnectionState,
+    val pingMillis: Long?,
 )

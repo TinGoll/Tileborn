@@ -74,4 +74,20 @@ class ProtocolMessagesTest {
 
         assertEquals(snapshot, decoded)
     }
+
+    @Test
+    fun `ping and pong messages serialize and deserialize`() {
+        val ping = PingRequest(
+            pingSequence = 4L,
+            clientTimeMillis = 1_000L,
+        )
+        val pong = PongResponse(
+            pingSequence = 4L,
+            clientTimeMillis = 1_000L,
+            serverTimeMillis = 1_025L,
+        )
+
+        assertEquals(ping, ProtocolCodec.decodeClient(ProtocolCodec.encodeClient(ping)))
+        assertEquals(pong, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(pong)))
+    }
 }

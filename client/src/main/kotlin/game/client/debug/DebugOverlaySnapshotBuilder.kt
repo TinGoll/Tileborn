@@ -12,6 +12,7 @@ class DebugOverlaySnapshotBuilder(
     private val engine: Engine,
     private val mapIdProvider: () -> String?,
     private val connectionStateProvider: () -> ConnectionState,
+    private val pingMillisProvider: () -> Long? = { null },
 ) {
     fun build(fps: Int): DebugOverlaySnapshot {
         val player = localPlayers.firstOrNull()
@@ -24,6 +25,7 @@ class DebugOverlaySnapshotBuilder(
             entityCount = engine.entities.size(),
             mapId = mapIdProvider() ?: "none",
             connectionState = connectionStateProvider(),
+            pingMillis = pingMillisProvider(),
         )
     }
 

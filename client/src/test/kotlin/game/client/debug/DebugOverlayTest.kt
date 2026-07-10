@@ -23,6 +23,7 @@ class DebugOverlayTest {
                 engine = engine,
                 mapIdProvider = { "debug_map" },
                 connectionStateProvider = { ConnectionState.LOCAL },
+                pingMillisProvider = { 42L },
             ),
             toggleKeyJustPressed = { false },
             fpsProvider = { 60 },
@@ -38,6 +39,7 @@ class DebugOverlayTest {
                 "Entities: 2",
                 "Map: debug_map",
                 "Connection: local",
+                "Ping: 42 ms",
             ),
             renderer.lastLines,
         )
@@ -53,6 +55,7 @@ class DebugOverlayTest {
                 engine = Engine(),
                 mapIdProvider = { null },
                 connectionStateProvider = { ConnectionState.DISCONNECTED },
+                pingMillisProvider = { null },
             ),
             toggleKeyJustPressed = { toggle.also { toggle = false } },
             fpsProvider = { 30 },
@@ -83,6 +86,7 @@ class DebugOverlayTest {
                 engine = engine,
                 mapIdProvider = { "debug_map" },
                 connectionStateProvider = { ConnectionState.LOCAL },
+                pingMillisProvider = { null },
             ),
             toggleKeyJustPressed = { false },
             fpsProvider = { 45 },
@@ -93,6 +97,7 @@ class DebugOverlayTest {
 
         assertEquals("Player: none", renderer.lastLines[1])
         assertEquals("Entities: 1", renderer.lastLines[2])
+        assertEquals("Ping: n/a", renderer.lastLines[5])
     }
 
     private class RecordingDebugOverlayRenderer : DebugOverlayRenderer {

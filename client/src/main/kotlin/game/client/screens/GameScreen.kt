@@ -79,6 +79,7 @@ class GameScreen(
                     engine = ecsWorld.engine,
                     mapIdProvider = { mapData?.mapId },
                     connectionStateProvider = { networkClient.connectionState },
+                    pingMillisProvider = { networkClient.pingMillis },
                 ),
             )
             cameraFollowSystem?.update(0f)
@@ -101,6 +102,7 @@ class GameScreen(
     }
 
     override fun dispose() {
+        Gdx.app?.log("GameScreen", "Disposing game screen; closing network client")
         screenEntities.forEach(ecsWorld.engine::removeEntity)
         screenEntities.clear()
         collisionBodies.forEach(ecsWorld.physicsWorld::destroyBody)

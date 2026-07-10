@@ -3,6 +3,8 @@ package game.server.network
 import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
+import game.shared.protocol.PingRequest
+import game.shared.protocol.PongResponse
 import game.shared.protocol.Protocol
 import game.shared.protocol.ProtocolCodec
 import java.io.BufferedReader
@@ -70,11 +72,11 @@ class TcpGameServer(
                 }
             } catch (exception: SocketException) {
                 if (running.get()) {
-                    logger("TCP accept failed: ${exception.message}")
+                    logger("TCP accept failed: ${exception.logName()}")
                 }
             } catch (exception: Exception) {
                 if (running.get()) {
-                    logger("TCP accept failed: ${exception.message}")
+                    logger("TCP accept failed: ${exception.logName()}")
                 }
             }
         }
@@ -117,15 +119,33 @@ class TcpGameServer(
                     writer.writeLine(ProtocolCodec.encodeServer(accepted))
                     logger("Join accepted for '${message.playerName}' entity=${accepted.playerEntityId}")
 
-                    while (running.get() && reader.readLine() != null) {
-                        // Gameplay synchronization is intentionally out of scope for this iteration.
+                    while (running.get()) {
+                        val clientPayload = reader.readLine() ?: break
+                        when (val clientMessage = ProtocolCodec.decodeClient(clientPayload)) {
+                            is PingRequest -> writer.writeLine(
+                                ProtocolCodec.encodeServer(
+                                    PongResponse(
+                                        pingSequence = clientMessage.pingSequence,
+                                        clientTimeMillis = clientMessage.clientTimeMillis,
+                                        serverTimeMillis = System.currentTimeMillis(),
+                                    ),
+                                ),
+                            )
+                            else -> {
+                                // Gameplay synchronization is intentionally out of scope for this iteration.
+                            }
+                        }
                     }
                     logger("TCP connection closed from ${socket.remoteSocketAddress}")
                 }
             }
+        } catch (_: SocketException) {
+            if (running.get()) {
+                logger("TCP connection closed from ${socket.remoteSocketAddress}")
+            }
         } catch (exception: Exception) {
             if (running.get()) {
-                logger("TCP client error from ${socket.remoteSocketAddress}: ${exception.message}")
+                logger("TCP client error from ${socket.remoteSocketAddress}: ${exception.logName()}")
             }
         } finally {
             clients -= socket
@@ -162,6 +182,9 @@ class TcpGameServer(
 
     private fun Socket.newWriter(): BufferedWriter =
         BufferedWriter(OutputStreamWriter(getOutputStream(), StandardCharsets.UTF_8))
+
+    private fun Exception.logName(): String =
+        this::class.java.simpleName
 
     private companion object {
         const val FIRST_PLAYER_ENTITY_ID = 1
