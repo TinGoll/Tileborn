@@ -8,7 +8,6 @@ import com.badlogic.gdx.physics.box2d.Body
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer
 import game.client.assets.AssetDescriptors
 import game.client.assets.GameAssetManager
-import game.client.debug.ConnectionState
 import game.client.debug.DebugOverlay
 import game.client.debug.DebugOverlaySnapshotBuilder
 import game.client.ecs.ClientEcsWorld
@@ -16,6 +15,8 @@ import game.client.ecs.ClientRenderEntityFactory
 import game.client.ecs.system.CameraFollowSystem
 import game.client.ecs.system.MapRenderSystem
 import game.client.ecs.system.PrimitiveRenderSystem
+import game.client.network.GameNetworkClient
+import game.client.network.NoopGameNetworkClient
 import game.shared.map.GameMapData
 import game.shared.map.TiledGameplayMapParser
 import game.shared.math.WorldUnits
@@ -27,6 +28,7 @@ import ktx.assets.disposeSafely
 class GameScreen(
     internal val assets: GameAssetManager,
     internal val ecsWorld: ClientEcsWorld,
+    private val networkClient: GameNetworkClient = NoopGameNetworkClient,
 ) : KtxScreen {
     private val camera = OrthographicCamera()
     private var mapRenderer: OrthogonalTiledMapRenderer? = null
@@ -48,6 +50,7 @@ class GameScreen(
 
     override fun show() {
         if (mapRenderer == null) {
+            networkClient.connect()
             val tiledMap = assets.get(AssetDescriptors.DEBUG_MAP)
             mapData = TiledGameplayMapParser { message ->
                 Gdx.app?.error("GameScreen", message)
@@ -75,7 +78,7 @@ class GameScreen(
                 DebugOverlaySnapshotBuilder(
                     engine = ecsWorld.engine,
                     mapIdProvider = { mapData?.mapId },
-                    connectionStateProvider = { ConnectionState.LOCAL },
+                    connectionStateProvider = { networkClient.connectionState },
                 ),
             )
             cameraFollowSystem?.update(0f)
@@ -115,6 +118,7 @@ class GameScreen(
         physicsDebugRenderer = null
         debugOverlay.disposeSafely()
         debugOverlay = null
+        networkClient.close()
         mapRenderer.disposeSafely()
         mapRenderer = null
         mapData = null

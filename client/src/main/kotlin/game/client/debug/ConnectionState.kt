@@ -5,5 +5,6 @@ enum class ConnectionState {
     LOCAL,
     CONNECTING,
     CONNECTED,
+    REJECTED,
     DISCONNECTED,
 }

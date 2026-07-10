@@ -5,6 +5,7 @@ import kotlin.math.min
 /** Runs authoritative server simulation with a fixed timestep. */
 class ServerGameLoop(
     tickRate: Int = DEFAULT_TICK_RATE,
+    private val logTicks: Boolean = false,
     private val clock: TickClock = SystemTickClock,
     private val logger: (String) -> Unit = ::println,
 ) {
@@ -48,7 +49,9 @@ class ServerGameLoop(
     fun tick(update: (Float) -> Unit) {
         update(fixedTimeStepSeconds)
         serverTick += 1
-        logger("server tick=$serverTick")
+        if (logTicks) {
+            logger("server tick=$serverTick")
+        }
     }
 
     fun stop() {

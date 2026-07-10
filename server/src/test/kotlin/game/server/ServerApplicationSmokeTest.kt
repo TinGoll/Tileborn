@@ -7,7 +7,7 @@ class ServerApplicationSmokeTest {
     @Test
     fun `server application starts loads map and stops after one tick`() {
         val messages = mutableListOf<String>()
-        val application = ServerApplication(logger = messages::add)
+        val application = ServerApplication(networkPort = 0, logger = messages::add)
 
         application.run(maxTicks = 1)
 

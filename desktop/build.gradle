@@ -36,6 +36,7 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
   implementation project(':client')
+  testImplementation project(':server')
   testImplementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
   testImplementation "junit:junit:4.13.2"
   implementation("com.badlogicgames.gdx:gdx-tools:$gdxVersion"){exclude group: 'com.badlogicgames.gdx', module: 'gdx-backend-lwjgl'}
