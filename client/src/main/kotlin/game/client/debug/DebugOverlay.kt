@@ -43,6 +43,7 @@ class DebugOverlay(
             "Entities: ${snapshot.entityCount}",
             "Map: ${snapshot.mapId}",
             "Connection: ${snapshot.connectionState.name.lowercase(Locale.US)}",
+            "Ping: ${snapshot.pingMillis?.let { "$it ms" } ?: "n/a"}",
         )
     }
 }

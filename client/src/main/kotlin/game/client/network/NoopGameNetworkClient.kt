@@ -7,6 +7,7 @@ import game.shared.protocol.ServerMessage
 object NoopGameNetworkClient : GameNetworkClient {
     override val connectionState: ConnectionState = ConnectionState.LOCAL
     override val lastServerMessage: ServerMessage? = null
+    override val pingMillis: Long? = null
 
     override fun connect() = Unit
 

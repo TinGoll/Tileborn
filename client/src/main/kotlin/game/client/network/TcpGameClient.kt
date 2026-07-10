@@ -5,6 +5,7 @@ import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
 import game.shared.protocol.NetworkDefaults
+import game.shared.protocol.PongResponse
 import game.shared.protocol.ProtocolCodec
 import game.shared.protocol.ServerMessage
 import java.io.BufferedReader
@@ -13,6 +14,7 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -22,6 +24,8 @@ class TcpGameClient(
     private val port: Int = NetworkDefaults.PORT,
     private val playerName: String = NetworkDefaults.DEFAULT_PLAYER_NAME,
     private val joinRequestFactory: () -> JoinRequest = { JoinRequest(playerName = playerName) },
+    private val pingIntervalMillis: Long = DEFAULT_PING_INTERVAL_MILLIS,
+    private val clockMillis: () -> Long = { System.currentTimeMillis() },
     private val logger: (String) -> Unit = { message -> println(message) },
 ) : GameNetworkClient {
     private val started = AtomicBoolean(false)
@@ -37,11 +41,20 @@ class TcpGameClient(
     override var lastServerMessage: ServerMessage? = null
         private set
 
+    @Volatile
+    override var pingMillis: Long? = null
+        private set
+
     override fun connect() {
-        if (!started.compareAndSet(false, true)) return
+        if (!started.compareAndSet(false, true)) {
+            logger("TCP client connect ignored: already started")
+            return
+        }
         closed.set(false)
         lastServerMessage = null
+        pingMillis = null
         connectionState = ConnectionState.CONNECTING
+        logger("TCP client connecting to $host:$port")
         thread = Thread(::runClient, "tcp-game-client").apply {
             isDaemon = true
             start()
@@ -49,6 +62,7 @@ class TcpGameClient(
     }
 
     override fun close() {
+        logger("TCP client close requested")
         closed.set(true)
         socket.closeQuietly()
         socket = null
@@ -82,14 +96,13 @@ class TcpGameClient(
                     lastServerMessage = response
                     when (response) {
                         is JoinAccepted -> {
+                            clientSocket.soTimeout = READ_POLL_TIMEOUT_MILLIS
                             connectionState = ConnectionState.CONNECTED
                             logger(
                                 "Join accepted entity=${response.playerEntityId} " +
                                     "map=${response.mapId} tick=${response.serverTick}",
                             )
-                            while (!closed.get() && reader.readLine() != null) {
-                                // Gameplay synchronization is intentionally out of scope for this iteration.
-                            }
+                            runConnectedLoop(reader, writer)
                         }
                         is JoinRejected -> {
                             connectionState = ConnectionState.REJECTED
@@ -105,7 +118,7 @@ class TcpGameClient(
         } catch (exception: Exception) {
             if (!closed.get()) {
                 connectionState = ConnectionState.DISCONNECTED
-                logger("Could not connect to server $host:$port: ${exception.message}")
+                logger("TCP client error for $host:$port: ${exception.logName()}")
             }
         } finally {
             clientSocket.closeQuietly()
@@ -113,6 +126,35 @@ class TcpGameClient(
             if (!closed.get() && connectionState == ConnectionState.CONNECTED) {
                 connectionState = ConnectionState.DISCONNECTED
                 logger("Disconnected from server $host:$port")
+            }
+        }
+    }
+
+    private fun runConnectedLoop(reader: BufferedReader, writer: BufferedWriter) {
+        val pingTracker = PingTracker(intervalMillis = pingIntervalMillis)
+        pingTracker.delayNextPing(clockMillis())
+        while (!closed.get()) {
+            pingTracker.nextPing(clockMillis())?.let { ping ->
+                writer.writeLine(ProtocolCodec.encodeClient(ping))
+            }
+
+            val payload: String? = try {
+                reader.readLine() ?: run {
+                    logger("TCP server closed connection $host:$port")
+                    return
+                }
+            } catch (_: SocketTimeoutException) {
+                null
+            }
+
+            if (payload == null) continue
+
+            val message = ProtocolCodec.decodeServer(payload)
+            lastServerMessage = message
+            if (message is PongResponse) {
+                pingTracker.recordPong(message, clockMillis())?.let { roundTripMillis ->
+                    pingMillis = roundTripMillis
+                }
             }
         }
     }
@@ -136,8 +178,13 @@ class TcpGameClient(
         }
     }
 
+    private fun Exception.logName(): String =
+        this::class.java.simpleName
+
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 1_000
         const val JOIN_TIMEOUT_MILLIS = 500L
+        const val READ_POLL_TIMEOUT_MILLIS = 100
+        const val DEFAULT_PING_INTERVAL_MILLIS = 1_000L
     }
 }

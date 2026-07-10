@@ -24,6 +24,7 @@ class DebugOverlaySmokeTest {
                 engine = engine,
                 mapIdProvider = { "debug_map" },
                 connectionStateProvider = { ConnectionState.LOCAL },
+                pingMillisProvider = { 18L },
             ),
             toggleKeyJustPressed = { false },
             fpsProvider = { 75 },
@@ -37,6 +38,7 @@ class DebugOverlaySmokeTest {
         assertEquals("Entities: 1", renderer.lastLines[2])
         assertEquals("Map: debug_map", renderer.lastLines[3])
         assertEquals("Connection: local", renderer.lastLines[4])
+        assertEquals("Ping: 18 ms", renderer.lastLines[5])
     }
 
     private class RecordingDebugOverlayRenderer : DebugOverlayRenderer {
