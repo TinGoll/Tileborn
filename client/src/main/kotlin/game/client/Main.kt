@@ -4,6 +4,8 @@ import game.client.assets.GameAssetManager
 import game.client.ecs.ClientEcsWorld
 import game.client.input.GameInputSource
 import game.client.input.KeyboardInputSource
+import game.client.network.GameNetworkClient
+import game.client.network.TcpGameClient
 import game.client.screens.GameScreen
 import game.client.screens.LoadingScreen
 import ktx.app.KtxGame
@@ -11,6 +13,7 @@ import ktx.app.KtxScreen
 
 class Main(
     private val inputSource: GameInputSource = KeyboardInputSource(),
+    private val networkClient: GameNetworkClient = TcpGameClient(),
 ) : KtxGame<KtxScreen>() {
     private lateinit var assets: GameAssetManager
     private lateinit var ecsWorld: ClientEcsWorld
@@ -23,7 +26,7 @@ class Main(
     }
 
     private fun showGameScreen() {
-        addScreen(GameScreen(assets, ecsWorld))
+        addScreen(GameScreen(assets, ecsWorld, networkClient))
         setScreen<GameScreen>()
         removeScreen<LoadingScreen>()?.dispose()
     }
@@ -36,5 +39,6 @@ class Main(
         if (::assets.isInitialized) {
             assets.dispose()
         }
+        networkClient.close()
     }
 }

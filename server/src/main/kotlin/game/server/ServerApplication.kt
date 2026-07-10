@@ -3,11 +3,14 @@ package game.server
 import com.badlogic.gdx.ApplicationAdapter
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.headless.HeadlessApplication
+import game.server.network.TcpGameServer
+import game.shared.protocol.NetworkDefaults
 
 /** Coordinates authoritative server startup, fixed-tick execution, and shutdown. */
 class ServerApplication(
     private val mapId: String = DEFAULT_MAP_ID,
     private val mapPath: String = DEFAULT_MAP_PATH,
+    private val networkPort: Int = NetworkDefaults.PORT,
     private val worldFactory: (String, String) -> ServerWorld = ::ServerWorld,
     private val loop: ServerGameLoop = ServerGameLoop(),
     private val consoleFactory: ((() -> Unit, (String) -> Unit) -> ServerConsole)? = { onStopRequested, consoleLogger ->
@@ -16,6 +19,7 @@ class ServerApplication(
     private val logger: (String) -> Unit = ::println,
 ) {
     private var world: ServerWorld? = null
+    private var networkServer: TcpGameServer? = null
     private var ownedHeadlessApplication: HeadlessApplication? = null
     private var stopped: Boolean = true
 
@@ -30,6 +34,12 @@ class ServerApplication(
                 "spawns=${serverWorld.gameMapData.spawnPoints.size} " +
                 "collisions=${serverWorld.gameMapData.collisionObjects.size}",
         )
+        networkServer = TcpGameServer(
+            port = networkPort,
+            mapIdProvider = { serverWorld.gameMapData.mapId },
+            serverTickProvider = { loop.serverTick },
+            logger = logger,
+        ).also { it.start() }
 
         Runtime.getRuntime().addShutdownHook(Thread { stop() })
         consoleFactory?.invoke(::stop, logger)?.start()
@@ -47,6 +57,8 @@ class ServerApplication(
         if (stopped) return
         stopped = true
         loop.stop()
+        networkServer?.close()
+        networkServer = null
         world?.dispose()
         world = null
         ownedHeadlessApplication?.exit()
