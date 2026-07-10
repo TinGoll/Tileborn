@@ -12,7 +12,8 @@ class ServerApplication(
     private val mapPath: String = DEFAULT_MAP_PATH,
     private val networkPort: Int = NetworkDefaults.PORT,
     private val worldFactory: (String, String) -> ServerWorld = ::ServerWorld,
-    private val loop: ServerGameLoop = ServerGameLoop(),
+    logTicks: Boolean = false,
+    private val loop: ServerGameLoop = ServerGameLoop(logTicks = logTicks),
     private val consoleFactory: ((() -> Unit, (String) -> Unit) -> ServerConsole)? = { onStopRequested, consoleLogger ->
         ServerConsole(onStopRequested = onStopRequested, logger = consoleLogger)
     },

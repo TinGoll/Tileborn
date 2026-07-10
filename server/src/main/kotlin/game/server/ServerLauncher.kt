@@ -7,5 +7,6 @@ fun main(args: Array<String>) {
     val maxTicks = args.firstNotNullOfOrNull { argument ->
         argument.removePrefix("--ticks=").takeIf { it != argument }?.toLong()
     }
-    ServerApplication().run(maxTicks = maxTicks)
+    val logTicks = "--log-ticks" in args
+    ServerApplication(logTicks = logTicks).run(maxTicks = maxTicks)
 }
