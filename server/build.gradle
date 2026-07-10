@@ -12,11 +12,22 @@ kotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.J
 application.mainClass = 'game.server.ServerLauncher'
 application.applicationName = appName
 eclipse.project.name = appName + '-server'
+sourceSets.main.resources.srcDirs += [ rootProject.file('assets').path ]
 
 dependencies {
+  implementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
   implementation project(':shared')
   runtimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
   runtimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  testImplementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
+  testImplementation "junit:junit:4.13.2"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+  testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+run {
+  workingDir = rootProject.file('assets').path
+  standardInput = System.in
 }
 
 jar {

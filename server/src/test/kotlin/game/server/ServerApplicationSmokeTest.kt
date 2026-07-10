@@ -1,0 +1,17 @@
+package game.server
+
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ServerApplicationSmokeTest {
+    @Test
+    fun `server application starts loads map and stops after one tick`() {
+        val messages = mutableListOf<String>()
+        val application = ServerApplication(logger = messages::add)
+
+        application.run(maxTicks = 1)
+
+        assertTrue(messages.any { it.contains("Loaded gameplay map 'debug_map'") })
+        assertTrue(messages.any { it.contains("Server stopped") })
+    }
+}
