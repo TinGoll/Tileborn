@@ -39,6 +39,10 @@ class ServerApplication(
             port = networkPort,
             mapIdProvider = { serverWorld.gameMapData.mapId },
             serverTickProvider = { loop.serverTick },
+            initialSnapshotProvider = { playerEntityId ->
+                serverWorld.spawnPlayer(playerEntityId)
+                serverWorld.buildSnapshot(loop.serverTick)
+            },
             logger = logger,
         ).also { it.start() }
 

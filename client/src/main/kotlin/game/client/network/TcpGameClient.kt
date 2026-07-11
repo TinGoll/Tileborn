@@ -42,6 +42,10 @@ class TcpGameClient(
         private set
 
     @Volatile
+    override var localPlayerEntityId: Int? = null
+        private set
+
+    @Volatile
     override var pingMillis: Long? = null
         private set
 
@@ -52,6 +56,7 @@ class TcpGameClient(
         }
         closed.set(false)
         lastServerMessage = null
+        localPlayerEntityId = null
         pingMillis = null
         connectionState = ConnectionState.CONNECTING
         logger("TCP client connecting to $host:$port")
@@ -96,6 +101,7 @@ class TcpGameClient(
                     lastServerMessage = response
                     when (response) {
                         is JoinAccepted -> {
+                            localPlayerEntityId = response.playerEntityId
                             clientSocket.soTimeout = READ_POLL_TIMEOUT_MILLIS
                             connectionState = ConnectionState.CONNECTED
                             logger(

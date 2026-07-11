@@ -7,6 +7,7 @@ import game.shared.protocol.ServerMessage
 interface GameNetworkClient : AutoCloseable {
     val connectionState: ConnectionState
     val lastServerMessage: ServerMessage?
+    val localPlayerEntityId: Int?
     val pingMillis: Long?
 
     fun connect()

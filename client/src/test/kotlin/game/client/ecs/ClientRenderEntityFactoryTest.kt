@@ -7,11 +7,13 @@ import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
 import game.shared.map.MapCollisionObject
 import game.shared.physics.PhysicsWorldFactory
+import game.shared.protocol.EntitySnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -58,5 +60,34 @@ class ClientRenderEntityFactoryTest {
         assertEquals(PrimitiveShape.RECTANGLE, render.shape)
         assertEquals(4f, render.width, 0f)
         assertEquals(2f, render.height, 0f)
+    }
+
+    @Test
+    fun `local player created from snapshot is visible and keeps server entity id`() {
+        val engine = Engine()
+        val physicsWorld = PhysicsWorldFactory.create()
+
+        val player = ClientRenderEntityFactory.createLocalPlayerFromSnapshot(
+            engine,
+            physicsWorld,
+            EntitySnapshot(
+                entityId = 42,
+                x = 8f,
+                y = 9f,
+                velocityX = 1f,
+                velocityY = 0f,
+            ),
+        )
+
+        val identity = player.getComponent(NetworkIdentityComponent::class.java)
+        val transform = player.getComponent(TransformComponent::class.java)
+        val render = player.getComponent(RenderPrimitiveComponent::class.java)
+        assertEquals(42L, identity.networkEntityId)
+        assertEquals(8f, transform.x, 0f)
+        assertEquals(9f, transform.y, 0f)
+        assertEquals(PrimitiveShape.CIRCLE, render.shape)
+        assertNotNull(player.getComponent(CameraTargetComponent::class.java))
+        assertNotNull(player.getComponent(LocalPlayerComponent::class.java))
+        physicsWorld.dispose()
     }
 }

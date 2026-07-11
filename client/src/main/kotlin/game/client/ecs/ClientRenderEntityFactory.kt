@@ -9,10 +9,12 @@ import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
 import game.shared.physics.PhysicsWorldFactory
+import game.shared.protocol.EntitySnapshot
 
 /** Creates the temporary primitive-rendered entities used by the client MVP. */
 object ClientRenderEntityFactory {
@@ -21,6 +23,26 @@ object ClientRenderEntityFactory {
             add(TransformComponent(x = x, y = y))
             add(VelocityComponent())
             add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, x, y)))
+            add(PlayerInputComponent())
+            add(LocalPlayerComponent())
+            add(
+                RenderPrimitiveComponent(
+                    shape = PrimitiveShape.CIRCLE,
+                    red = 0.2f,
+                    green = 0.75f,
+                    blue = 1f,
+                    radius = 0.4f,
+                ),
+            )
+            add(CameraTargetComponent())
+        }.also(engine::addEntity)
+
+    fun createLocalPlayerFromSnapshot(engine: Engine, physicsWorld: World, snapshot: EntitySnapshot): Entity =
+        engine.createEntity().apply {
+            add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
+            add(TransformComponent(x = snapshot.x, y = snapshot.y))
+            add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
+            add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, snapshot.x, snapshot.y)))
             add(PlayerInputComponent())
             add(LocalPlayerComponent())
             add(

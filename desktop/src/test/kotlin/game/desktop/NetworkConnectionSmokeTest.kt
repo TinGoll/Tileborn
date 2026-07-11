@@ -9,6 +9,8 @@ import game.shared.protocol.JoinRequest
 import game.shared.protocol.PingRequest
 import game.shared.protocol.PongResponse
 import game.shared.protocol.ProtocolCodec
+import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.WorldSnapshot
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -62,6 +64,37 @@ class NetworkConnectionSmokeTest {
             assertTrue(waitUntil { client.connectionState == ConnectionState.REJECTED })
             val rejected = client.lastServerMessage as JoinRejected
             assertTrue(rejected.reason.contains("Unsupported protocol version"))
+            client.close()
+        }
+    }
+
+    @Test
+    fun `client receives initial WorldSnapshot from local server`() {
+        runningServer(
+            initialSnapshotProvider = { playerEntityId ->
+                WorldSnapshot(
+                    serverTick = 42L,
+                    entities = listOf(
+                        EntitySnapshot(
+                            entityId = playerEntityId,
+                            x = 5f,
+                            y = 6f,
+                            velocityX = 0f,
+                            velocityY = 0f,
+                        ),
+                    ),
+                )
+            },
+        ).use { server ->
+            val client = TcpGameClient(port = server.localPort)
+
+            client.connect()
+
+            assertTrue(waitUntil { client.lastServerMessage is WorldSnapshot })
+            val snapshot = client.lastServerMessage as WorldSnapshot
+            assertEquals(client.localPlayerEntityId, snapshot.entities.single().entityId)
+            assertEquals(5f, snapshot.entities.single().x, 0f)
+            assertEquals(6f, snapshot.entities.single().y, 0f)
             client.close()
         }
     }
@@ -145,11 +178,13 @@ class NetworkConnectionSmokeTest {
 
     private fun runningServer(
         serverTickProvider: () -> Long = { 42L },
+        initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
     ): TcpGameServer =
         TcpGameServer(
             port = 0,
             mapIdProvider = { "debug_map" },
             serverTickProvider = serverTickProvider,
+            initialSnapshotProvider = initialSnapshotProvider,
             logger = {},
         ).also { it.start() }
 

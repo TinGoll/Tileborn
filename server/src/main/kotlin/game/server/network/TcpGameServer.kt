@@ -7,6 +7,7 @@ import game.shared.protocol.PingRequest
 import game.shared.protocol.PongResponse
 import game.shared.protocol.Protocol
 import game.shared.protocol.ProtocolCodec
+import game.shared.protocol.WorldSnapshot
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -24,6 +25,7 @@ class TcpGameServer(
     private val port: Int,
     private val mapIdProvider: () -> String,
     private val serverTickProvider: () -> Long,
+    private val initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
     private val logger: (String) -> Unit = ::println,
 ) : AutoCloseable {
     private val running = AtomicBoolean(false)
@@ -118,6 +120,13 @@ class TcpGameServer(
                     )
                     writer.writeLine(ProtocolCodec.encodeServer(accepted))
                     logger("Join accepted for '${message.playerName}' entity=${accepted.playerEntityId}")
+                    initialSnapshotProvider?.invoke(accepted.playerEntityId)?.let { snapshot ->
+                        writer.writeLine(ProtocolCodec.encodeServer(snapshot))
+                        logger(
+                            "Initial snapshot sent to '${message.playerName}' " +
+                                "entity=${accepted.playerEntityId} entities=${snapshot.entities.size}",
+                        )
+                    }
 
                     while (running.get()) {
                         val clientPayload = reader.readLine() ?: break
