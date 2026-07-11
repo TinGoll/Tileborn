@@ -43,6 +43,11 @@ class ServerApplication(
                 serverWorld.spawnPlayer(playerEntityId)
                 serverWorld.buildSnapshot(loop.serverTick)
             },
+            inputCommandHandler = { playerEntityId, inputCommand ->
+                serverWorld.applyInput(playerEntityId, inputCommand)
+                serverWorld.update(loop.fixedTimeStepSeconds)
+                serverWorld.buildSnapshot(loop.serverTick)
+            },
             logger = logger,
         ).also { it.start() }
 

@@ -1,6 +1,7 @@
 package game.client.network
 
 import game.client.debug.ConnectionState
+import game.shared.protocol.InputCommand
 import game.shared.protocol.ServerMessage
 
 /** Client-side network boundary used by screens without exposing socket details. */
@@ -11,4 +12,6 @@ interface GameNetworkClient : AutoCloseable {
     val pingMillis: Long?
 
     fun connect()
+
+    fun sendInput(command: InputCommand)
 }

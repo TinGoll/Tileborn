@@ -3,6 +3,7 @@ package game.server.network
 import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
+import game.shared.protocol.InputCommand
 import game.shared.protocol.PingRequest
 import game.shared.protocol.PongResponse
 import game.shared.protocol.Protocol
@@ -26,6 +27,7 @@ class TcpGameServer(
     private val mapIdProvider: () -> String,
     private val serverTickProvider: () -> Long,
     private val initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
+    private val inputCommandHandler: ((Int, InputCommand) -> WorldSnapshot?)? = null,
     private val logger: (String) -> Unit = ::println,
 ) : AutoCloseable {
     private val running = AtomicBoolean(false)
@@ -140,8 +142,13 @@ class TcpGameServer(
                                     ),
                                 ),
                             )
+                            is InputCommand -> {
+                                inputCommandHandler?.invoke(accepted.playerEntityId, clientMessage)?.let { snapshot ->
+                                    writer.writeLine(ProtocolCodec.encodeServer(snapshot))
+                                }
+                            }
                             else -> {
-                                // Gameplay synchronization is intentionally out of scope for this iteration.
+                                // JoinRequest is only valid as the first message in this line-delimited session.
                             }
                         }
                     }

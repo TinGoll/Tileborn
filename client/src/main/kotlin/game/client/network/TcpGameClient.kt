@@ -4,6 +4,7 @@ import game.client.debug.ConnectionState
 import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
+import game.shared.protocol.InputCommand
 import game.shared.protocol.NetworkDefaults
 import game.shared.protocol.PongResponse
 import game.shared.protocol.ProtocolCodec
@@ -16,6 +17,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Line-delimited JSON TCP client for the first server handshake. */
@@ -32,6 +34,7 @@ class TcpGameClient(
     private val closed = AtomicBoolean(false)
     private var socket: Socket? = null
     private var thread: Thread? = null
+    private val outgoingInput = ConcurrentLinkedQueue<InputCommand>()
 
     @Volatile
     override var connectionState: ConnectionState = ConnectionState.DISCONNECTED
@@ -58,11 +61,18 @@ class TcpGameClient(
         lastServerMessage = null
         localPlayerEntityId = null
         pingMillis = null
+        outgoingInput.clear()
         connectionState = ConnectionState.CONNECTING
         logger("TCP client connecting to $host:$port")
         thread = Thread(::runClient, "tcp-game-client").apply {
             isDaemon = true
             start()
+        }
+    }
+
+    override fun sendInput(command: InputCommand) {
+        if (connectionState == ConnectionState.CONNECTED && !closed.get()) {
+            outgoingInput += command
         }
     }
 
@@ -140,6 +150,8 @@ class TcpGameClient(
         val pingTracker = PingTracker(intervalMillis = pingIntervalMillis)
         pingTracker.delayNextPing(clockMillis())
         while (!closed.get()) {
+            drainOutgoingInput(writer)
+
             pingTracker.nextPing(clockMillis())?.let { ping ->
                 writer.writeLine(ProtocolCodec.encodeClient(ping))
             }
@@ -162,6 +174,13 @@ class TcpGameClient(
                     pingMillis = roundTripMillis
                 }
             }
+        }
+    }
+
+    private fun drainOutgoingInput(writer: BufferedWriter) {
+        while (true) {
+            val command = outgoingInput.poll() ?: return
+            writer.writeLine(ProtocolCodec.encodeClient(command))
         }
     }
 

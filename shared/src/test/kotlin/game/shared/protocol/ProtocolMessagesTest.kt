@@ -3,6 +3,7 @@ package game.shared.protocol
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.google.gson.JsonParseException
 
 class ProtocolMessagesTest {
     @Test
@@ -89,5 +90,12 @@ class ProtocolMessagesTest {
 
         assertEquals(ping, ProtocolCodec.decodeClient(ProtocolCodec.encodeClient(ping)))
         assertEquals(pong, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(pong)))
+    }
+
+    @Test(expected = JsonParseException::class)
+    fun `direct client position message is not supported`() {
+        ProtocolCodec.decodeClient(
+            """{"type":"POSITION_UPDATE","protocolVersion":1,"x":120.0,"y":50.0}""",
+        )
     }
 }

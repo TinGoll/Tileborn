@@ -4,11 +4,13 @@ import com.badlogic.ashley.core.Engine
 import com.badlogic.ashley.core.EntitySystem
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.system.ServerInitializationSystem
+import game.shared.ecs.system.MovementSystem
 
 /** Owns the authoritative ECS engine and its explicitly ordered systems. */
 class ServerEcsWorld : Disposable {
     val engine: Engine = Engine().apply {
         addSystem(ServerInitializationSystem())
+        addSystem(MovementSystem())
     }
 
     override fun dispose() {

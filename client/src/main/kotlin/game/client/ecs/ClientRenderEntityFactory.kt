@@ -42,7 +42,6 @@ object ClientRenderEntityFactory {
             add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
-            add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, snapshot.x, snapshot.y)))
             add(PlayerInputComponent())
             add(LocalPlayerComponent())
             add(
@@ -55,6 +54,22 @@ object ClientRenderEntityFactory {
                 ),
             )
             add(CameraTargetComponent())
+        }.also(engine::addEntity)
+
+    fun createRemotePlayerFromSnapshot(engine: Engine, snapshot: EntitySnapshot): Entity =
+        engine.createEntity().apply {
+            add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
+            add(TransformComponent(x = snapshot.x, y = snapshot.y))
+            add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
+            add(
+                RenderPrimitiveComponent(
+                    shape = PrimitiveShape.CIRCLE,
+                    red = 1f,
+                    green = 0.55f,
+                    blue = 0.2f,
+                    radius = 0.4f,
+                ),
+            )
         }.also(engine::addEntity)
 
     /** Makes otherwise invisible Tiled collision geometry visible during primitive-rendered MVP development. */

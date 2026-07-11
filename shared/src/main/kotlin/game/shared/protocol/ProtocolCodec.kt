@@ -46,6 +46,10 @@ object ProtocolCodec {
             ?: throw JsonParseException("Protocol message must be a JSON object.")
         val rawType = jsonObject["type"]?.asString
             ?: throw JsonParseException("Protocol message is missing type.")
-        return MessageType.valueOf(rawType)
+        return try {
+            MessageType.valueOf(rawType)
+        } catch (exception: IllegalArgumentException) {
+            throw JsonParseException("Unsupported protocol message type: $rawType", exception)
+        }
     }
 }

@@ -5,11 +5,14 @@ import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.component.ServerAuthorityComponent
 import game.server.ecs.ServerEcsWorld
 import game.shared.ecs.component.NetworkIdentityComponent
+import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
+import game.shared.input.InputCommandValidator
 import game.shared.map.GameMapData
 import game.shared.map.TiledGameplayMapParser
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.InputCommand
 import game.shared.protocol.WorldSnapshot
 
 /** Authoritative server world state: ECS engine plus gameplay-only map metadata. */
@@ -41,9 +44,27 @@ class ServerWorld(
             engine.createEntity().apply {
                 add(TransformComponent(x = spawn.x, y = spawn.y))
                 add(NetworkIdentityComponent(networkEntityId = serverEntityId.toLong()))
+                add(PlayerInputComponent())
+                add(VelocityComponent())
                 add(ServerAuthorityComponent())
             }.also(engine::addEntity)
         }
+
+    @Synchronized
+    fun applyInput(serverEntityId: Int, command: InputCommand): Boolean {
+        val entity = engine.entities.firstOrNull { entity ->
+            entity.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
+        } ?: return false
+        val input = entity.getComponent(PlayerInputComponent::class.java) ?: return false
+        val validated = InputCommandValidator.toInputState(command)
+        input.state.moveX = validated.moveX
+        input.state.moveY = validated.moveY
+        input.state.attack = validated.attack
+        input.state.interact = validated.interact
+        input.state.aimX = validated.aimX
+        input.state.aimY = validated.aimY
+        return true
+    }
 
     @Synchronized
     fun buildSnapshot(serverTick: Long): WorldSnapshot =

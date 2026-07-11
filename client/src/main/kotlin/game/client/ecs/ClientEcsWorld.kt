@@ -7,7 +7,6 @@ import game.client.ecs.system.ClientInitializationSystem
 import game.client.ecs.system.InputSystem
 import game.client.input.GameInputSource
 import game.client.input.KeyboardInputSource
-import game.shared.ecs.system.MovementSystem
 import game.shared.ecs.system.PhysicsSimulationSystem
 import game.shared.physics.PhysicsWorldFactory
 
@@ -21,7 +20,6 @@ class ClientEcsWorld(
     val engine: Engine = Engine().apply {
         addSystem(ClientInitializationSystem())
         addSystem(InputSystem(inputSource))
-        addSystem(MovementSystem())
         addSystem(physicsSimulationSystem)
     }
 

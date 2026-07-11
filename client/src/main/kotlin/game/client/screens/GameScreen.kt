@@ -19,6 +19,7 @@ import game.client.ecs.system.PrimitiveRenderSystem
 import game.client.network.GameNetworkClient
 import game.client.network.NoopGameNetworkClient
 import game.shared.ecs.component.NetworkIdentityComponent
+import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
@@ -27,6 +28,7 @@ import game.shared.map.TiledGameplayMapParser
 import game.shared.math.WorldUnits
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.InputCommand
 import game.shared.protocol.WorldSnapshot
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
@@ -49,6 +51,8 @@ class GameScreen(
     private val collisionBodies = mutableListOf<Body>()
     private val screenEntities = mutableListOf<Entity>()
     private var appliedSnapshot: WorldSnapshot? = null
+    private var clientTick: Long = 0L
+    private var inputSequence: Long = 0L
 
     init {
         check(assets.isFinished()) {
@@ -92,6 +96,7 @@ class GameScreen(
         clearScreen(red = 0.7f, green = 0.7f, blue = 0.7f)
         applyLatestSnapshot()
         ecsWorld.engine.update(delta)
+        sendLocalInput()
         physicsDebugRenderer?.render(ecsWorld.physicsWorld, camera.combined)
         debugOverlay?.render()
     }
@@ -127,6 +132,26 @@ class GameScreen(
         mapRenderer = null
         mapData = null
         appliedSnapshot = null
+        clientTick = 0L
+        inputSequence = 0L
+    }
+
+    private fun sendLocalInput() {
+        val localPlayerId = networkClient.localPlayerEntityId ?: return
+        val entity = findNetworkEntity(localPlayerId) ?: return
+        val input = PLAYER_INPUT_MAPPER.get(entity)?.state ?: return
+        networkClient.sendInput(
+            InputCommand(
+                inputSequence = inputSequence++,
+                clientTick = clientTick++,
+                moveX = input.moveX,
+                moveY = input.moveY,
+                attack = input.attack,
+                interact = input.interact,
+                aimX = input.aimX,
+                aimY = input.aimY,
+            ),
+        )
     }
 
     private fun applyLatestSnapshot() {
@@ -139,6 +164,11 @@ class GameScreen(
                 screenEntities += ClientRenderEntityFactory.createLocalPlayerFromSnapshot(
                     ecsWorld.engine,
                     ecsWorld.physicsWorld,
+                    entitySnapshot,
+                )
+            } else if (entity == null) {
+                screenEntities += ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
+                    ecsWorld.engine,
                     entitySnapshot,
                 )
             } else if (entity != null) {
@@ -175,5 +205,7 @@ class GameScreen(
             ComponentMapper.getFor(VelocityComponent::class.java)
         val PHYSICS_BODY_MAPPER: ComponentMapper<PhysicsBodyComponent> =
             ComponentMapper.getFor(PhysicsBodyComponent::class.java)
+        val PLAYER_INPUT_MAPPER: ComponentMapper<PlayerInputComponent> =
+            ComponentMapper.getFor(PlayerInputComponent::class.java)
     }
 }

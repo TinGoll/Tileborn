@@ -13,14 +13,16 @@ data class GameInputState(
 ) {
     /** Sets movement intent and caps its magnitude so diagonals are not faster. */
     fun setMovement(x: Float, y: Float) {
-        val lengthSquared = x * x + y * y
+        val safeX = x.takeIf(Float::isFinite)?.coerceIn(-1f, 1f) ?: 0f
+        val safeY = y.takeIf(Float::isFinite)?.coerceIn(-1f, 1f) ?: 0f
+        val lengthSquared = safeX * safeX + safeY * safeY
         if (lengthSquared > 1f) {
             val inverseLength = 1f / sqrt(lengthSquared)
-            moveX = x * inverseLength
-            moveY = y * inverseLength
+            moveX = safeX * inverseLength
+            moveY = safeY * inverseLength
         } else {
-            moveX = x
-            moveY = y
+            moveX = safeX
+            moveY = safeY
         }
     }
 }
