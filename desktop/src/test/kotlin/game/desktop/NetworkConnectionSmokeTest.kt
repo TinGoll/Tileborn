@@ -10,6 +10,7 @@ import game.shared.protocol.PingRequest
 import game.shared.protocol.PongResponse
 import game.shared.protocol.ProtocolCodec
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.InputCommand
 import game.shared.protocol.WorldSnapshot
 import java.io.BufferedReader
 import java.io.BufferedWriter
@@ -129,6 +130,64 @@ class NetworkConnectionSmokeTest {
     }
 
     @Test
+    fun `two clients receive each other movement and despawn snapshots`() {
+        val entities = linkedMapOf<Int, Float>()
+        val lock = Any()
+        fun snapshot(): WorldSnapshot = synchronized(lock) {
+            WorldSnapshot(
+                serverTick = 42L,
+                entities = entities.map { (entityId, x) ->
+                    EntitySnapshot(entityId = entityId, x = x, y = 6f, velocityX = 0f, velocityY = 0f)
+                },
+            )
+        }
+
+        TcpGameServer(
+            port = 0,
+            mapIdProvider = { "debug_map" },
+            serverTickProvider = { 42L },
+            initialSnapshotProvider = { playerEntityId ->
+                synchronized(lock) { entities[playerEntityId] = 5f }
+                snapshot()
+            },
+            inputCommandHandler = { playerEntityId, command ->
+                synchronized(lock) { entities[playerEntityId] = (entities[playerEntityId] ?: 0f) + command.moveX }
+                snapshot()
+            },
+            disconnectSnapshotProvider = { playerEntityId ->
+                synchronized(lock) { entities.remove(playerEntityId) }
+                snapshot()
+            },
+            logger = {},
+        ).use { server ->
+            server.start()
+            val first = TcpGameClient(port = server.localPort, pingIntervalMillis = 60_000L)
+            val second = TcpGameClient(port = server.localPort, pingIntervalMillis = 60_000L)
+            try {
+                first.connect()
+                assertTrue(waitUntil { first.connectionState == ConnectionState.CONNECTED })
+                second.connect()
+                assertTrue(waitUntil { second.connectionState == ConnectionState.CONNECTED })
+
+                assertTrue(waitUntil { first.lastServerMessage.hasEntityIds(1, 2) })
+                assertTrue(waitUntil { second.lastServerMessage.hasEntityIds(1, 2) })
+
+                first.sendInput(InputCommand(inputSequence = 1L, clientTick = 1L, moveX = 1f, moveY = 0f))
+                assertTrue(waitUntil {
+                    (second.lastServerMessage as? WorldSnapshot)
+                        ?.entities?.firstOrNull { it.entityId == first.localPlayerEntityId }?.x == 6f
+                })
+
+                second.close()
+                assertTrue(waitUntil { first.lastServerMessage.hasEntityIds(1) })
+            } finally {
+                first.close()
+                second.close()
+            }
+        }
+    }
+
+    @Test
     fun `client marks disconnected when server connection is lost`() {
         val server = runningServer()
         val client = TcpGameClient(port = server.localPort)
@@ -196,6 +255,9 @@ class NetworkConnectionSmokeTest {
         }
         return condition()
     }
+
+    private fun game.shared.protocol.ServerMessage?.hasEntityIds(vararg expected: Int): Boolean =
+        (this as? WorldSnapshot)?.entities?.map { it.entityId }?.toSet() == expected.toSet()
 
     private fun Socket.newReader(): BufferedReader =
         BufferedReader(InputStreamReader(getInputStream(), StandardCharsets.UTF_8))

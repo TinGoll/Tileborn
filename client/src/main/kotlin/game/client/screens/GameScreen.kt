@@ -12,13 +12,13 @@ import game.client.assets.GameAssetManager
 import game.client.debug.DebugOverlay
 import game.client.debug.DebugOverlaySnapshotBuilder
 import game.client.ecs.ClientEcsWorld
+import game.client.ecs.ClientEntityRegistry
 import game.client.ecs.ClientRenderEntityFactory
 import game.client.ecs.system.CameraFollowSystem
 import game.client.ecs.system.MapRenderSystem
 import game.client.ecs.system.PrimitiveRenderSystem
 import game.client.network.GameNetworkClient
 import game.client.network.NoopGameNetworkClient
-import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
@@ -50,6 +50,7 @@ class GameScreen(
     private var debugOverlay: DebugOverlay? = null
     private val collisionBodies = mutableListOf<Body>()
     private val screenEntities = mutableListOf<Entity>()
+    private val networkEntities = ClientEntityRegistry()
     private var appliedSnapshot: WorldSnapshot? = null
     private var clientTick: Long = 0L
     private var inputSequence: Long = 0L
@@ -112,6 +113,7 @@ class GameScreen(
         Gdx.app?.log("GameScreen", "Disposing game screen; closing network client")
         screenEntities.forEach(ecsWorld.engine::removeEntity)
         screenEntities.clear()
+        networkEntities.clear().forEach(ecsWorld.engine::removeEntity)
         collisionBodies.forEach(ecsWorld.physicsWorld::destroyBody)
         collisionBodies.clear()
         cameraFollowSystem?.let(ecsWorld.engine::removeSystem)
@@ -158,19 +160,26 @@ class GameScreen(
         val snapshot = networkClient.lastServerMessage as? WorldSnapshot ?: return
         if (snapshot === appliedSnapshot) return
         val localPlayerId = networkClient.localPlayerEntityId ?: snapshot.entities.firstOrNull()?.entityId
+        val snapshotEntityIds = snapshot.entities.mapTo(mutableSetOf()) { it.entityId }
+        networkEntities.serverEntityIds()
+            .filterNot(snapshotEntityIds::contains)
+            .forEach(::removeNetworkEntity)
+
         snapshot.entities.forEach { entitySnapshot ->
-            val entity = findNetworkEntity(entitySnapshot.entityId)
+            val entity = networkEntities.get(entitySnapshot.entityId)
             if (entity == null && entitySnapshot.entityId == localPlayerId) {
-                screenEntities += ClientRenderEntityFactory.createLocalPlayerFromSnapshot(
+                val created = ClientRenderEntityFactory.createLocalPlayerFromSnapshot(
                     ecsWorld.engine,
                     ecsWorld.physicsWorld,
                     entitySnapshot,
                 )
+                networkEntities.put(entitySnapshot.entityId, created)
             } else if (entity == null) {
-                screenEntities += ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
+                val created = ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
                     ecsWorld.engine,
                     entitySnapshot,
                 )
+                networkEntities.put(entitySnapshot.entityId, created)
             } else if (entity != null) {
                 applySnapshotToEntity(entity, entitySnapshot)
             }
@@ -180,9 +189,11 @@ class GameScreen(
     }
 
     private fun findNetworkEntity(serverEntityId: Int): Entity? =
-        ecsWorld.engine.entities.firstOrNull { entity ->
-            NETWORK_IDENTITY_MAPPER.get(entity)?.networkEntityId == serverEntityId.toLong()
-        }
+        networkEntities.get(serverEntityId)
+
+    private fun removeNetworkEntity(serverEntityId: Int) {
+        networkEntities.remove(serverEntityId)?.let(ecsWorld.engine::removeEntity)
+    }
 
     private fun applySnapshotToEntity(entity: Entity, snapshot: EntitySnapshot) {
         TRANSFORM_MAPPER.get(entity)?.let { transform ->
@@ -197,8 +208,6 @@ class GameScreen(
     }
 
     private companion object {
-        val NETWORK_IDENTITY_MAPPER: ComponentMapper<NetworkIdentityComponent> =
-            ComponentMapper.getFor(NetworkIdentityComponent::class.java)
         val TRANSFORM_MAPPER: ComponentMapper<TransformComponent> =
             ComponentMapper.getFor(TransformComponent::class.java)
         val VELOCITY_MAPPER: ComponentMapper<VelocityComponent> =

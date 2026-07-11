@@ -28,11 +28,13 @@ class TcpGameServer(
     private val serverTickProvider: () -> Long,
     private val initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
     private val inputCommandHandler: ((Int, InputCommand) -> WorldSnapshot?)? = null,
+    private val disconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
     private val logger: (String) -> Unit = ::println,
 ) : AutoCloseable {
     private val running = AtomicBoolean(false)
     private val nextEntityId = AtomicInteger(FIRST_PLAYER_ENTITY_ID)
     private val clients = CopyOnWriteArrayList<Socket>()
+    private val sessions = CopyOnWriteArrayList<ClientSession>()
     private var serverSocket: ServerSocket? = null
     private var acceptThread: Thread? = null
 
@@ -57,11 +59,23 @@ class TcpGameServer(
         if (!running.getAndSet(false)) return
         clients.forEach { it.closeQuietly() }
         clients.clear()
+        sessions.clear()
         serverSocket.closeQuietly()
         serverSocket = null
         acceptThread?.join(JOIN_TIMEOUT_MILLIS)
         acceptThread = null
         logger("TCP server stopped")
+    }
+
+    /** Sends an authoritative full-world snapshot to every connected player. */
+    fun broadcastSnapshot(snapshot: WorldSnapshot) {
+        sessions.forEach { session ->
+            try {
+                session.send(snapshot)
+            } catch (_: Exception) {
+                session.socket.closeQuietly()
+            }
+        }
     }
 
     private fun acceptLoop(serverSocket: ServerSocket) {
@@ -122,7 +136,8 @@ class TcpGameServer(
                     )
                     writer.writeLine(ProtocolCodec.encodeServer(accepted))
                     logger("Join accepted for '${message.playerName}' entity=${accepted.playerEntityId}")
-                    initialSnapshotProvider?.invoke(accepted.playerEntityId)?.let { snapshot ->
+                    val initialSnapshot = initialSnapshotProvider?.invoke(accepted.playerEntityId)
+                    initialSnapshot?.let { snapshot ->
                         writer.writeLine(ProtocolCodec.encodeServer(snapshot))
                         logger(
                             "Initial snapshot sent to '${message.playerName}' " +
@@ -130,21 +145,30 @@ class TcpGameServer(
                         )
                     }
 
+                    val session = ClientSession(accepted.playerEntityId, socket, writer)
+                    sessions += session
+
+                    // Existing clients need to learn about the newly spawned entity immediately.
+                    // The joining client already received the initial full snapshot above.
+                    initialSnapshot?.let { snapshot ->
+                        sessions.filter { it.entityId != accepted.playerEntityId }.forEach { existing ->
+                            existing.send(snapshot)
+                        }
+                    }
+
                     while (running.get()) {
                         val clientPayload = reader.readLine() ?: break
                         when (val clientMessage = ProtocolCodec.decodeClient(clientPayload)) {
-                            is PingRequest -> writer.writeLine(
-                                ProtocolCodec.encodeServer(
+                            is PingRequest -> session.send(
                                     PongResponse(
                                         pingSequence = clientMessage.pingSequence,
                                         clientTimeMillis = clientMessage.clientTimeMillis,
                                         serverTimeMillis = System.currentTimeMillis(),
                                     ),
-                                ),
-                            )
+                                )
                             is InputCommand -> {
                                 inputCommandHandler?.invoke(accepted.playerEntityId, clientMessage)?.let { snapshot ->
-                                    writer.writeLine(ProtocolCodec.encodeServer(snapshot))
+                                    broadcastSnapshot(snapshot)
                                 }
                             }
                             else -> {
@@ -164,6 +188,10 @@ class TcpGameServer(
                 logger("TCP client error from ${socket.remoteSocketAddress}: ${exception.logName()}")
             }
         } finally {
+            sessions.firstOrNull { it.socket == socket }?.let { session ->
+                sessions -= session
+                disconnectSnapshotProvider?.invoke(session.entityId)?.let(::broadcastSnapshot)
+            }
             clients -= socket
             socket.closeQuietly()
         }
@@ -201,6 +229,19 @@ class TcpGameServer(
 
     private fun Exception.logName(): String =
         this::class.java.simpleName
+
+    private class ClientSession(
+        val entityId: Int,
+        val socket: Socket,
+        private val writer: BufferedWriter,
+    ) {
+        @Synchronized
+        fun send(message: game.shared.protocol.ServerMessage) {
+            writer.write(ProtocolCodec.encodeServer(message))
+            writer.newLine()
+            writer.flush()
+        }
+    }
 
     private companion object {
         const val FIRST_PLAYER_ENTITY_ID = 1

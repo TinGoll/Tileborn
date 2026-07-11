@@ -48,6 +48,10 @@ class ServerApplication(
                 serverWorld.update(loop.fixedTimeStepSeconds)
                 serverWorld.buildSnapshot(loop.serverTick)
             },
+            disconnectSnapshotProvider = { playerEntityId ->
+                serverWorld.despawnPlayer(playerEntityId)
+                serverWorld.buildSnapshot(loop.serverTick)
+            },
             logger = logger,
         ).also { it.start() }
 
@@ -57,6 +61,7 @@ class ServerApplication(
         try {
             loop.run(maxTicks = maxTicks) { fixedDelta ->
                 serverWorld.update(fixedDelta)
+                networkServer?.broadcastSnapshot(serverWorld.buildSnapshot(loop.serverTick))
             }
         } finally {
             stop()

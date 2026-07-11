@@ -51,6 +51,15 @@ class ServerWorld(
         }
 
     @Synchronized
+    fun despawnPlayer(serverEntityId: Int): Boolean {
+        val entity = engine.entities.firstOrNull { candidate ->
+            candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
+        } ?: return false
+        engine.removeEntity(entity)
+        return true
+    }
+
+    @Synchronized
     fun applyInput(serverEntityId: Int, command: InputCommand): Boolean {
         val entity = engine.entities.firstOrNull { entity ->
             entity.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
