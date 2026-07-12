@@ -14,6 +14,12 @@ interface GameNetworkClient : AutoCloseable {
 
     fun connect()
 
+    /** Releases an unreliable background connection while retaining resumable session state. */
+    fun onApplicationPaused() = Unit
+
+    /** Requests a reconnect after an application returns to the foreground. */
+    fun onApplicationResumed() = Unit
+
     fun sendInput(command: InputCommand)
 
     /** Returns received snapshots in transport order so acknowledgements cannot be overwritten by later packets. */

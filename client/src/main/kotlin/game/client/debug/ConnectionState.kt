@@ -4,6 +4,7 @@ package game.client.debug
 enum class ConnectionState {
     LOCAL,
     CONNECTING,
+    RECONNECTING,
     CONNECTED,
     REJECTED,
     DISCONNECTED,

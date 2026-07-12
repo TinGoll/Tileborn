@@ -41,4 +41,14 @@ class Main(
         }
         networkClient.close()
     }
+
+    override fun pause() {
+        networkClient.onApplicationPaused()
+        super.pause()
+    }
+
+    override fun resume() {
+        super.resume()
+        networkClient.onApplicationResumed()
+    }
 }

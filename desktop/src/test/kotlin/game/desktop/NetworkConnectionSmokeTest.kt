@@ -130,7 +130,7 @@ class NetworkConnectionSmokeTest {
     }
 
     @Test
-    fun `two clients receive each other movement and despawn snapshots`() {
+    fun `two clients receive each other movement while disconnected session is retained`() {
         val entities = linkedMapOf<Int, Float>()
         val lock = Any()
         fun snapshot(): WorldSnapshot = synchronized(lock) {
@@ -179,7 +179,7 @@ class NetworkConnectionSmokeTest {
                 })
 
                 second.close()
-                assertTrue(waitUntil { first.lastServerMessage.hasEntityIds(1) })
+                assertTrue(waitUntil { first.lastServerMessage.hasEntityIds(1, 2) })
             } finally {
                 first.close()
                 second.close()
@@ -188,7 +188,7 @@ class NetworkConnectionSmokeTest {
     }
 
     @Test
-    fun `client marks disconnected when server connection is lost`() {
+    fun `client marks reconnecting when server connection is lost`() {
         val server = runningServer()
         val client = TcpGameClient(port = server.localPort)
         try {
@@ -197,10 +197,89 @@ class NetworkConnectionSmokeTest {
 
             server.close()
 
-            assertTrue(waitUntil { client.connectionState == ConnectionState.DISCONNECTED })
+            assertTrue(waitUntil { client.connectionState == ConnectionState.RECONNECTING })
         } finally {
             client.close()
             server.close()
+        }
+    }
+
+    @Test
+    fun `client reconnects with its session token before timeout`() {
+        val entities = linkedMapOf<Int, Float>()
+        val lock = Any()
+        fun snapshot() = synchronized(lock) {
+            WorldSnapshot(
+                serverTick = 42L,
+                entities = entities.map { (id, x) -> EntitySnapshot(id, x, 0f, 0f, 0f) },
+            )
+        }
+        TcpGameServer(
+            port = 0,
+            mapIdProvider = { "debug_map" },
+            serverTickProvider = { 42L },
+            initialSnapshotProvider = { id -> synchronized(lock) { entities[id] = 5f }; snapshot() },
+            reconnectSnapshotProvider = { snapshot() },
+            disconnectSnapshotProvider = { id -> synchronized(lock) { entities.remove(id) }; snapshot() },
+            logger = {},
+        ).use { server ->
+            server.start()
+            val client = TcpGameClient(port = server.localPort, pingIntervalMillis = 60_000L)
+            try {
+                client.connect()
+                assertTrue(waitUntil { client.connectionState == ConnectionState.CONNECTED })
+                val entityId = client.localPlayerEntityId
+                val token = client.sessionToken
+
+                client.onApplicationPaused()
+                assertTrue(waitUntil { client.connectionState == ConnectionState.RECONNECTING })
+                client.onApplicationResumed()
+
+                assertTrue(waitUntil { client.connectionState == ConnectionState.CONNECTED })
+                assertEquals(entityId, client.localPlayerEntityId)
+                assertEquals(token, client.sessionToken)
+                assertTrue(waitUntil { client.lastServerMessage.hasEntityIds(entityId!!) })
+            } finally {
+                client.close()
+            }
+        }
+    }
+
+    @Test
+    fun `expired reconnect session creates a new player session`() {
+        val entities = linkedMapOf<Int, Float>()
+        val lock = Any()
+        fun snapshot() = synchronized(lock) {
+            WorldSnapshot(42L, entities.map { (id, x) -> EntitySnapshot(id, x, 0f, 0f, 0f) })
+        }
+        TcpGameServer(
+            port = 0,
+            mapIdProvider = { "debug_map" },
+            serverTickProvider = { 42L },
+            initialSnapshotProvider = { id -> synchronized(lock) { entities[id] = id.toFloat() }; snapshot() },
+            reconnectSnapshotProvider = { snapshot() },
+            disconnectSnapshotProvider = { id -> synchronized(lock) { entities.remove(id) }; snapshot() },
+            sessionTimeoutMillis = 50L,
+            logger = {},
+        ).use { server ->
+            server.start()
+            val client = TcpGameClient(port = server.localPort, pingIntervalMillis = 60_000L)
+            try {
+                client.connect()
+                assertTrue(waitUntil { client.connectionState == ConnectionState.CONNECTED })
+                val originalEntityId = client.localPlayerEntityId
+
+                client.onApplicationPaused()
+                assertTrue(waitUntil { client.connectionState == ConnectionState.RECONNECTING })
+                Thread.sleep(75L)
+                server.expireDisconnectedSessions()
+                client.onApplicationResumed()
+
+                assertTrue(waitUntil { client.connectionState == ConnectionState.CONNECTED })
+                assertTrue(client.localPlayerEntityId != originalEntityId)
+            } finally {
+                client.close()
+            }
         }
     }
 

@@ -20,6 +20,7 @@ import java.net.SocketTimeoutException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /** Line-delimited JSON TCP client for the first server handshake. */
 class TcpGameClient(
@@ -33,6 +34,10 @@ class TcpGameClient(
 ) : GameNetworkClient {
     private val started = AtomicBoolean(false)
     private val closed = AtomicBoolean(false)
+    private val reconnectRequested = AtomicBoolean(false)
+    private val applicationPaused = AtomicBoolean(false)
+    private val connectionAttemptRunning = AtomicBoolean(false)
+    private val lastReconnectAttemptMillis = AtomicLong(Long.MIN_VALUE)
     private var socket: Socket? = null
     private var thread: Thread? = null
     private val outgoingInput = ConcurrentLinkedQueue<InputCommand>()
@@ -51,6 +56,10 @@ class TcpGameClient(
         private set
 
     @Volatile
+    var sessionToken: String? = null
+        private set
+
+    @Volatile
     override var pingMillis: Long? = null
         private set
 
@@ -60,12 +69,14 @@ class TcpGameClient(
             return
         }
         closed.set(false)
+        applicationPaused.set(false)
+        reconnectRequested.set(false)
         lastServerMessage = null
         localPlayerEntityId = null
         pingMillis = null
         outgoingInput.clear()
         receivedSnapshots.clear()
-        connectionState = ConnectionState.CONNECTING
+        connectionState = if (sessionToken == null) ConnectionState.CONNECTING else ConnectionState.RECONNECTING
         logger("TCP client connecting to $host:$port")
         thread = Thread(::runClient, "tcp-game-client").apply {
             isDaemon = true
@@ -86,17 +97,36 @@ class TcpGameClient(
     override fun close() {
         logger("TCP client close requested")
         closed.set(true)
+        reconnectRequested.set(false)
         socket.closeQuietly()
         socket = null
         thread?.join(JOIN_TIMEOUT_MILLIS)
         thread = null
         started.set(false)
-        if (connectionState == ConnectionState.CONNECTING || connectionState == ConnectionState.CONNECTED) {
+        if (connectionState != ConnectionState.REJECTED) {
             connectionState = ConnectionState.DISCONNECTED
         }
     }
 
+    override fun onApplicationPaused() {
+        if (!closed.get() && started.get()) {
+            applicationPaused.set(true)
+            reconnectRequested.set(true)
+            socket.closeQuietly()
+            connectionState = ConnectionState.RECONNECTING
+        }
+    }
+
+    override fun onApplicationResumed() {
+        if (!closed.get() && started.get()) {
+            applicationPaused.set(false)
+            reconnectRequested.set(true)
+            ensureReconnectScheduled()
+        }
+    }
+
     private fun runClient() {
+        if (!connectionAttemptRunning.compareAndSet(false, true)) return
         val clientSocket = Socket()
         try {
             clientSocket.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MILLIS)
@@ -108,7 +138,10 @@ class TcpGameClient(
 
             clientSocket.newWriter().use { writer ->
                 clientSocket.newReader().use { reader ->
-                    writer.writeLine(ProtocolCodec.encodeClient(joinRequestFactory()))
+                    val initialJoin = joinRequestFactory()
+                    writer.writeLine(
+                        ProtocolCodec.encodeClient(initialJoin.copy(sessionToken = sessionToken)),
+                    )
 
                     val responsePayload = reader.readLine()
                     if (responsePayload == null) {
@@ -122,6 +155,8 @@ class TcpGameClient(
                     when (response) {
                         is JoinAccepted -> {
                             localPlayerEntityId = response.playerEntityId
+                            sessionToken = response.sessionToken
+                            reconnectRequested.set(false)
                             clientSocket.soTimeout = READ_POLL_TIMEOUT_MILLIS
                             connectionState = ConnectionState.CONNECTED
                             logger(
@@ -143,15 +178,19 @@ class TcpGameClient(
             }
         } catch (exception: Exception) {
             if (!closed.get()) {
-                connectionState = ConnectionState.DISCONNECTED
+                connectionState = ConnectionState.RECONNECTING
                 logger("TCP client error for $host:$port: ${exception.logName()}")
             }
         } finally {
             clientSocket.closeQuietly()
-            socket = null
-            if (!closed.get() && connectionState == ConnectionState.CONNECTED) {
-                connectionState = ConnectionState.DISCONNECTED
-                logger("Disconnected from server $host:$port")
+            val isCurrentSocket = socket === clientSocket
+            if (isCurrentSocket) socket = null
+            connectionAttemptRunning.set(false)
+            if (isCurrentSocket && !closed.get() && connectionState != ConnectionState.REJECTED) {
+                connectionState = ConnectionState.RECONNECTING
+                logger("Disconnected from server $host:$port; reconnecting")
+                lastReconnectAttemptMillis.set(Long.MIN_VALUE)
+                ensureReconnectScheduled()
             }
         }
     }
@@ -195,6 +234,30 @@ class TcpGameClient(
         }
     }
 
+    private fun ensureReconnectScheduled() {
+        if (closed.get() || applicationPaused.get() || !started.get() || connectionState == ConnectionState.REJECTED) return
+        val now = clockMillis()
+        val previous = lastReconnectAttemptMillis.get()
+        if (
+            (previous != Long.MIN_VALUE && now - previous < RECONNECT_DELAY_MILLIS) ||
+            !lastReconnectAttemptMillis.compareAndSet(previous, now)
+        ) return
+        reconnectRequested.set(true)
+        Thread({
+            try {
+                Thread.sleep(RECONNECT_DELAY_MILLIS)
+            } catch (_: InterruptedException) {
+                return@Thread
+            }
+            if (!closed.get() && !applicationPaused.get() && started.get() && reconnectRequested.get()) {
+                runClient()
+            }
+        }, "tcp-game-client-reconnect").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
     private fun BufferedWriter.writeLine(line: String) {
         write(line)
         newLine()
@@ -224,5 +287,6 @@ class TcpGameClient(
         // intent is never held behind an idle socket read for a visible amount of time.
         const val READ_POLL_TIMEOUT_MILLIS = 10
         const val DEFAULT_PING_INTERVAL_MILLIS = 1_000L
+        const val RECONNECT_DELAY_MILLIS = 250L
     }
 }

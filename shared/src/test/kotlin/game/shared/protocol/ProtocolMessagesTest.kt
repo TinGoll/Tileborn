@@ -49,11 +49,23 @@ class ProtocolMessagesTest {
 
     @Test
     fun `client message serializes and deserializes`() {
-        val request = JoinRequest(playerName = "player")
+        val request = JoinRequest(playerName = "player", sessionToken = "resume-token")
 
         val decoded = ProtocolCodec.decodeClient(ProtocolCodec.encodeClient(request))
 
         assertEquals(request, decoded)
+    }
+
+    @Test
+    fun `join accepted serializes opaque session token`() {
+        val accepted = JoinAccepted(
+            playerEntityId = 7,
+            mapId = "debug_map",
+            serverTick = 42L,
+            sessionToken = "session-token",
+        )
+
+        assertEquals(accepted, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(accepted)))
     }
 
     @Test
