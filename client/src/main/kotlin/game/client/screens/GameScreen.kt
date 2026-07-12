@@ -19,8 +19,6 @@ import game.client.ecs.system.MapRenderSystem
 import game.client.ecs.system.PrimitiveRenderSystem
 import game.client.network.GameNetworkClient
 import game.client.network.NoopGameNetworkClient
-import game.shared.ecs.component.PlayerInputComponent
-import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
@@ -28,7 +26,6 @@ import game.shared.map.TiledGameplayMapParser
 import game.shared.math.WorldUnits
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
-import game.shared.protocol.InputCommand
 import game.shared.protocol.WorldSnapshot
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
@@ -52,8 +49,6 @@ class GameScreen(
     private val screenEntities = mutableListOf<Entity>()
     private val networkEntities = ClientEntityRegistry()
     private var appliedSnapshot: WorldSnapshot? = null
-    private var clientTick: Long = 0L
-    private var inputSequence: Long = 0L
 
     init {
         check(assets.isFinished()) {
@@ -135,30 +130,18 @@ class GameScreen(
         mapRenderer = null
         mapData = null
         appliedSnapshot = null
-        clientTick = 0L
-        inputSequence = 0L
+        ecsWorld.predictedInputBuffer.clear()
     }
 
     private fun sendLocalInput() {
-        val localPlayerId = networkClient.localPlayerEntityId ?: return
-        val entity = findNetworkEntity(localPlayerId) ?: return
-        val input = PLAYER_INPUT_MAPPER.get(entity)?.state ?: return
-        networkClient.sendInput(
-            InputCommand(
-                inputSequence = inputSequence++,
-                clientTick = clientTick++,
-                moveX = input.moveX,
-                moveY = input.moveY,
-                attack = input.attack,
-                interact = input.interact,
-                aimX = input.aimX,
-                aimY = input.aimY,
-            ),
-        )
+        ecsWorld.clientPredictionSystem.drainOutgoingCommands().forEach(networkClient::sendInput)
     }
 
     private fun applyLatestSnapshot() {
-        val snapshot = networkClient.lastServerMessage as? WorldSnapshot ?: return
+        networkClient.drainWorldSnapshots().forEach(::applySnapshot)
+    }
+
+    private fun applySnapshot(snapshot: WorldSnapshot) {
         if (snapshot === appliedSnapshot) return
         val localPlayerId = networkClient.localPlayerEntityId ?: snapshot.entities.firstOrNull()?.entityId
         val snapshotEntityIds = snapshot.entities.mapTo(mutableSetOf()) { it.entityId }
@@ -184,7 +167,7 @@ class GameScreen(
                 ecsWorld.snapshotInterpolationSystem.recordSnapshot(snapshot.serverTick, entitySnapshot)
             } else if (entity != null) {
                 if (entitySnapshot.entityId == localPlayerId) {
-                    applySnapshotToEntity(entity, entitySnapshot)
+                    applySnapshotToEntity(entity, entitySnapshot, snapshot.acknowledgedInputSequence)
                 } else {
                     applyRemoteSnapshotToEntity(entity, snapshot.serverTick, entitySnapshot)
                 }
@@ -202,16 +185,12 @@ class GameScreen(
         networkEntities.remove(serverEntityId)?.let(ecsWorld.engine::removeEntity)
     }
 
-    private fun applySnapshotToEntity(entity: Entity, snapshot: EntitySnapshot) {
-        TRANSFORM_MAPPER.get(entity)?.let { transform ->
-            transform.x = snapshot.x
-            transform.y = snapshot.y
-        }
-        VELOCITY_MAPPER.get(entity)?.let { velocity ->
-            velocity.x = snapshot.velocityX
-            velocity.y = snapshot.velocityY
-        }
-        PHYSICS_BODY_MAPPER.get(entity)?.body?.setTransform(snapshot.x, snapshot.y, 0f)
+    private fun applySnapshotToEntity(entity: Entity, snapshot: EntitySnapshot, acknowledgedInputSequence: Long) {
+        ecsWorld.serverReconciliationSystem.reconcile(
+            entity,
+            snapshot,
+            acknowledgedInputSequence,
+        )
     }
 
     private fun applyRemoteSnapshotToEntity(entity: Entity, serverTick: Long, snapshot: EntitySnapshot) {
@@ -231,9 +210,5 @@ class GameScreen(
             ComponentMapper.getFor(TransformComponent::class.java)
         val VELOCITY_MAPPER: ComponentMapper<VelocityComponent> =
             ComponentMapper.getFor(VelocityComponent::class.java)
-        val PHYSICS_BODY_MAPPER: ComponentMapper<PhysicsBodyComponent> =
-            ComponentMapper.getFor(PhysicsBodyComponent::class.java)
-        val PLAYER_INPUT_MAPPER: ComponentMapper<PlayerInputComponent> =
-            ComponentMapper.getFor(PlayerInputComponent::class.java)
     }
 }

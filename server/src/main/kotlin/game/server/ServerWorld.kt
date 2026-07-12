@@ -23,6 +23,7 @@ class ServerWorld(
 ) : Disposable {
     val gameMapData: GameMapData
     val engine = ecsWorld.engine
+    private val lastAcknowledgedInputByEntityId = mutableMapOf<Int, Long>()
 
     init {
         val tiledMap = TmxMapLoader().load(mapPath)
@@ -56,11 +57,14 @@ class ServerWorld(
             candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
         } ?: return false
         engine.removeEntity(entity)
+        lastAcknowledgedInputByEntityId.remove(serverEntityId)
         return true
     }
 
     @Synchronized
     fun applyInput(serverEntityId: Int, command: InputCommand): Boolean {
+        val lastAcknowledged = lastAcknowledgedInputByEntityId[serverEntityId]
+        if (lastAcknowledged != null && command.inputSequence <= lastAcknowledged) return false
         val entity = engine.entities.firstOrNull { entity ->
             entity.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
         } ?: return false
@@ -72,11 +76,15 @@ class ServerWorld(
         input.state.interact = validated.interact
         input.state.aimX = validated.aimX
         input.state.aimY = validated.aimY
+        lastAcknowledgedInputByEntityId[serverEntityId] = command.inputSequence
         return true
     }
 
     @Synchronized
-    fun buildSnapshot(serverTick: Long): WorldSnapshot =
+    fun buildSnapshot(
+        serverTick: Long,
+        acknowledgedInputSequence: Long = WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE,
+    ): WorldSnapshot =
         WorldSnapshot(
             serverTick = serverTick,
             entities = engine.entities
@@ -92,7 +100,12 @@ class ServerWorld(
                         velocityY = velocity?.y ?: 0f,
                     )
                 },
+            acknowledgedInputSequence = acknowledgedInputSequence,
         )
+
+    @Synchronized
+    fun acknowledgedInputSequence(serverEntityId: Int): Long =
+        lastAcknowledgedInputByEntityId[serverEntityId] ?: WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE
 
     override fun dispose() {
         ecsWorld.dispose()

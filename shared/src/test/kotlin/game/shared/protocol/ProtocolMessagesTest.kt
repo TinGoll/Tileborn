@@ -60,6 +60,7 @@ class ProtocolMessagesTest {
     fun `server message serializes and deserializes`() {
         val snapshot = WorldSnapshot(
             serverTick = 99L,
+            acknowledgedInputSequence = 12L,
             entities = listOf(
                 EntitySnapshot(
                     entityId = 3,

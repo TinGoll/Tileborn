@@ -5,8 +5,11 @@ import com.badlogic.gdx.physics.box2d.World
 import com.badlogic.gdx.utils.Disposable
 import game.client.ecs.system.ClientInitializationSystem
 import game.client.ecs.system.InputSystem
+import game.client.ecs.system.ClientPredictionSystem
+import game.client.ecs.system.ServerReconciliationSystem
 import game.client.ecs.system.SnapshotInterpolationSystem
 import game.client.input.GameInputSource
+import game.client.network.PredictedInputBuffer
 import game.client.input.KeyboardInputSource
 import game.shared.ecs.system.PhysicsSimulationSystem
 import game.shared.physics.PhysicsWorldFactory
@@ -16,13 +19,18 @@ class ClientEcsWorld(
     inputSource: GameInputSource = KeyboardInputSource(),
 ) : Disposable {
     val physicsWorld: World = PhysicsWorldFactory.create()
+    val predictedInputBuffer = PredictedInputBuffer()
+    val clientPredictionSystem = ClientPredictionSystem(predictedInputBuffer)
+    val serverReconciliationSystem = ServerReconciliationSystem(predictedInputBuffer)
     private val physicsSimulationSystem = PhysicsSimulationSystem(physicsWorld)
     val snapshotInterpolationSystem = SnapshotInterpolationSystem()
 
     val engine: Engine = Engine().apply {
         addSystem(ClientInitializationSystem())
         addSystem(InputSystem(inputSource))
+        addSystem(clientPredictionSystem)
         addSystem(snapshotInterpolationSystem)
+        addSystem(serverReconciliationSystem)
         addSystem(physicsSimulationSystem)
     }
 
@@ -30,6 +38,9 @@ class ClientEcsWorld(
         engine.removeAllEntities()
         engine.removeSystem(physicsSimulationSystem)
         engine.removeSystem(snapshotInterpolationSystem)
+        engine.removeSystem(clientPredictionSystem)
+        engine.removeSystem(serverReconciliationSystem)
+        predictedInputBuffer.clear()
         physicsSimulationSystem.dispose()
         physicsWorld.dispose()
     }

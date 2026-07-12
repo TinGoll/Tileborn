@@ -45,8 +45,11 @@ class ServerApplication(
             },
             inputCommandHandler = { playerEntityId, inputCommand ->
                 serverWorld.applyInput(playerEntityId, inputCommand)
-                serverWorld.update(loop.fixedTimeStepSeconds)
-                serverWorld.buildSnapshot(loop.serverTick)
+                // Input is consumed by the fixed authoritative loop, never by network receive timing.
+                serverWorld.buildSnapshot(
+                    serverTick = loop.serverTick,
+                    acknowledgedInputSequence = serverWorld.acknowledgedInputSequence(playerEntityId),
+                )
             },
             disconnectSnapshotProvider = { playerEntityId ->
                 serverWorld.despawnPlayer(playerEntityId)

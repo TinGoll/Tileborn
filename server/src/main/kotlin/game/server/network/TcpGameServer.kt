@@ -68,8 +68,8 @@ class TcpGameServer(
     }
 
     /** Sends an authoritative full-world snapshot to every connected player. */
-    fun broadcastSnapshot(snapshot: WorldSnapshot) {
-        sessions.forEach { session ->
+    fun broadcastSnapshot(snapshot: WorldSnapshot, excludedEntityId: Int? = null) {
+        sessions.filter { it.entityId != excludedEntityId }.forEach { session ->
             try {
                 session.send(snapshot)
             } catch (_: Exception) {
@@ -168,7 +168,15 @@ class TcpGameServer(
                                 )
                             is InputCommand -> {
                                 inputCommandHandler?.invoke(accepted.playerEntityId, clientMessage)?.let { snapshot ->
-                                    broadcastSnapshot(snapshot)
+                                    // The acknowledgement belongs only to this session; remote clients must not
+                                    // discard input based on another player's sequence.
+                                    session.send(snapshot)
+                                    broadcastSnapshot(
+                                        snapshot.copy(
+                                            acknowledgedInputSequence = WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE,
+                                        ),
+                                        excludedEntityId = accepted.playerEntityId,
+                                    )
                                 }
                             }
                             else -> {

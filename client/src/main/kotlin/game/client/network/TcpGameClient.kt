@@ -9,6 +9,7 @@ import game.shared.protocol.NetworkDefaults
 import game.shared.protocol.PongResponse
 import game.shared.protocol.ProtocolCodec
 import game.shared.protocol.ServerMessage
+import game.shared.protocol.WorldSnapshot
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -35,6 +36,7 @@ class TcpGameClient(
     private var socket: Socket? = null
     private var thread: Thread? = null
     private val outgoingInput = ConcurrentLinkedQueue<InputCommand>()
+    private val receivedSnapshots = ConcurrentLinkedQueue<WorldSnapshot>()
 
     @Volatile
     override var connectionState: ConnectionState = ConnectionState.DISCONNECTED
@@ -62,6 +64,7 @@ class TcpGameClient(
         localPlayerEntityId = null
         pingMillis = null
         outgoingInput.clear()
+        receivedSnapshots.clear()
         connectionState = ConnectionState.CONNECTING
         logger("TCP client connecting to $host:$port")
         thread = Thread(::runClient, "tcp-game-client").apply {
@@ -74,6 +77,10 @@ class TcpGameClient(
         if (connectionState == ConnectionState.CONNECTED && !closed.get()) {
             outgoingInput += command
         }
+    }
+
+    override fun drainWorldSnapshots(): List<WorldSnapshot> = buildList {
+        while (true) add(receivedSnapshots.poll() ?: break)
     }
 
     override fun close() {
@@ -169,6 +176,7 @@ class TcpGameClient(
 
             val message = ProtocolCodec.decodeServer(payload)
             lastServerMessage = message
+            if (message is WorldSnapshot) receivedSnapshots += message
             if (message is PongResponse) {
                 pingTracker.recordPong(message, clockMillis())?.let { roundTripMillis ->
                     pingMillis = roundTripMillis
