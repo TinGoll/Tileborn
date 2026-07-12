@@ -1,7 +1,6 @@
 package game.client.screens
 
 import com.badlogic.gdx.Gdx
-import com.badlogic.gdx.Input
 import com.badlogic.ashley.core.ComponentMapper
 import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.OrthographicCamera
@@ -20,6 +19,8 @@ import game.client.ecs.system.MapRenderSystem
 import game.client.ecs.system.PrimitiveRenderSystem
 import game.client.network.GameNetworkClient
 import game.client.network.NoopGameNetworkClient
+import game.client.input.TouchControlsOverlay
+import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
@@ -39,6 +40,7 @@ class GameScreen(
     internal val assets: GameAssetManager,
     internal val ecsWorld: ClientEcsWorld,
     private val networkClient: GameNetworkClient = NoopGameNetworkClient,
+    private val touchControls: TouchControlsOverlay? = null,
 ) : KtxScreen {
     private val camera = OrthographicCamera()
     private var mapRenderer: OrthogonalTiledMapRenderer? = null
@@ -54,6 +56,7 @@ class GameScreen(
     private val networkEntities = ClientEntityRegistry()
     private var appliedSnapshot: WorldSnapshot? = null
     private var nextInteractionSequence = 1L
+    private var wasInteractPressed = false
     private var lastGameEvent: String? = null
 
     init {
@@ -105,6 +108,7 @@ class GameScreen(
         sendInteractionIfRequested()
         physicsDebugRenderer?.render(ecsWorld.physicsWorld, camera.combined)
         debugOverlay?.render()
+        touchControls?.render()
     }
 
     override fun resize(width: Int, height: Int) {
@@ -141,7 +145,9 @@ class GameScreen(
         mapData = null
         appliedSnapshot = null
         lastGameEvent = null
+        wasInteractPressed = false
         ecsWorld.predictedInputBuffer.clear()
+        touchControls?.dispose()
     }
 
     private fun sendLocalInput() {
@@ -160,7 +166,16 @@ class GameScreen(
     }
 
     private fun sendInteractionIfRequested() {
-        if (!Gdx.input.isKeyJustPressed(Input.Keys.E)) return
+        val interactPressed = networkClient.localPlayerEntityId
+            ?.let(::findNetworkEntity)
+            ?.getComponent(PlayerInputComponent::class.java)
+            ?.state
+            ?.interact == true
+        if (!interactPressed || wasInteractPressed) {
+            wasInteractPressed = interactPressed
+            return
+        }
+        wasInteractPressed = true
         val playerId = networkClient.localPlayerEntityId ?: return
         val transform = findNetworkEntity(playerId)?.getComponent(TransformComponent::class.java) ?: return
         val target = mapData?.let { data ->

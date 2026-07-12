@@ -4,6 +4,7 @@ import game.client.assets.GameAssetManager
 import game.client.ecs.ClientEcsWorld
 import game.client.input.GameInputSource
 import game.client.input.KeyboardInputSource
+import game.client.input.TouchControlsOverlay
 import game.client.network.GameNetworkClient
 import game.client.network.TcpGameClient
 import game.client.screens.GameScreen
@@ -26,7 +27,7 @@ class Main(
     }
 
     private fun showGameScreen() {
-        addScreen(GameScreen(assets, ecsWorld, networkClient))
+        addScreen(GameScreen(assets, ecsWorld, networkClient, inputSource as? TouchControlsOverlay))
         setScreen<GameScreen>()
         removeScreen<LoadingScreen>()?.dispose()
     }
