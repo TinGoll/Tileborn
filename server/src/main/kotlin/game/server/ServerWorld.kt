@@ -6,6 +6,7 @@ import game.server.ecs.component.ServerAuthorityComponent
 import game.server.ecs.ServerEcsWorld
 import game.shared.constants.InterestManagementConstants
 import game.shared.ecs.component.NetworkIdentityComponent
+import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
@@ -14,6 +15,8 @@ import game.shared.map.GameMapData
 import game.shared.map.TiledGameplayMapParser
 import game.shared.map.MapInteractableType
 import game.shared.map.interactableById
+import game.shared.physics.PhysicsWorldFactory
+import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.GameEvent
 import game.shared.protocol.GameEventType
@@ -38,6 +41,7 @@ class ServerWorld(
         } finally {
             tiledMap.dispose()
         }
+        TiledCollisionLoader(ecsWorld.physicsWorld).load(gameMapData)
     }
 
     @Synchronized
@@ -53,6 +57,7 @@ class ServerWorld(
                 add(NetworkIdentityComponent(networkEntityId = serverEntityId.toLong()))
                 add(PlayerInputComponent())
                 add(VelocityComponent())
+                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(ecsWorld.physicsWorld, spawn.x, spawn.y)))
                 add(ServerAuthorityComponent())
             }.also(engine::addEntity)
         }
@@ -118,6 +123,7 @@ class ServerWorld(
                 val spawn = gameMapData.requireSpawnPoint(portal.targetSpawn)
                 transform.x = spawn.x
                 transform.y = spawn.y
+                entity.getComponent(PhysicsBodyComponent::class.java)?.synchronizeTransformToBody = true
                 InteractionResult.Accepted(
                     GameEvent(GameEventType.PORTAL_USED, target.id, "player used portal ${portal.portalId}"),
                 )

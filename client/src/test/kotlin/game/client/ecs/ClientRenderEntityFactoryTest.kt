@@ -89,6 +89,7 @@ class ClientRenderEntityFactoryTest {
         assertEquals(PrimitiveShape.CIRCLE, render.shape)
         assertNotNull(player.getComponent(CameraTargetComponent::class.java))
         assertNotNull(player.getComponent(LocalPlayerComponent::class.java))
+        assertNotNull(player.getComponent(PhysicsBodyComponent::class.java))
         physicsWorld.dispose()
     }
 

@@ -47,7 +47,28 @@ class ServerAuthoritativeMovementTest {
     }
 
     @Test
-    fun `input for one entity does not control another entity`() {
+    fun `server physics prevents a player from crossing a tiled wall`() {
+        val application = ensureHeadlessApplication()
+        val serverWorld = ServerWorld(mapId = "debug_map", mapPath = "maps/debug_map.tmx")
+        try {
+            val player = serverWorld.spawnPlayer(serverEntityId = 1)
+            val transform = player.getComponent(TransformComponent::class.java)
+
+            serverWorld.applyInput(
+                serverEntityId = 1,
+                command = InputCommand(inputSequence = 1L, clientTick = 1L, moveX = 1f, moveY = 0f),
+            )
+            repeat(180) { serverWorld.update(1f / 60f) }
+
+            assertTrue("Player crossed east wall: x=${transform.x}", transform.x <= 8.61f)
+        } finally {
+            serverWorld.dispose()
+            application?.exit()
+        }
+    }
+
+    @Test
+    fun `input for one entity does not directly control another entity`() {
         val application = ensureHeadlessApplication()
         val serverWorld = ServerWorld(mapId = "debug_map", mapPath = "maps/debug_map.tmx")
         try {
@@ -64,7 +85,9 @@ class ServerAuthoritativeMovementTest {
             )
             serverWorld.update(0.05f)
 
-            assertEquals(firstStartX, firstTransform.x, 0f)
+            // Both players spawn at the same point. Box2D may push the first player away,
+            // but it must never move in the direction of the second player's input.
+            assertTrue(firstTransform.x < firstStartX)
             assertTrue(secondTransform.x > secondStartX)
         } finally {
             serverWorld.dispose()

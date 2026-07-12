@@ -8,6 +8,7 @@ import game.client.ecs.component.LocalPlayerComponent
 import game.client.network.PredictedInputBuffer
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
+import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.protocol.EntitySnapshot
 import kotlin.math.exp
 import kotlin.math.sqrt
@@ -33,10 +34,31 @@ class ServerReconciliationSystem(
         val previousY = transform.y
         predictedInputs.acknowledge(acknowledgedSequence)
 
-        transform.x = authoritative.x
-        transform.y = authoritative.y
         velocity.x = authoritative.velocityX
         velocity.y = authoritative.velocityY
+        PHYSICS_BODY_MAPPER.get(entity)?.let { physics ->
+            val correctionX = authoritative.x - previousX
+            val correctionY = authoritative.y - previousY
+            val correctionDistance = sqrt(correctionX * correctionX + correctionY * correctionY)
+            // The local Box2D simulation has already applied unacknowledged intent. Replacing it
+            // with every delayed snapshot makes both the player and camera jump at snapshot rate.
+            // Reserve a body teleport for corrections that are large enough to indicate divergence.
+            predictedInputs.entries().lastOrNull()?.command?.let { command ->
+                velocity.x = command.moveX * game.shared.constants.GameConstants.PLAYER_MOVE_SPEED
+                velocity.y = command.moveY * game.shared.constants.GameConstants.PLAYER_MOVE_SPEED
+            }
+            if (correctionDistance >= snapDistance) {
+                transform.x = authoritative.x
+                transform.y = authoritative.y
+                physics.synchronizeTransformToBody = true
+            }
+            remainingCorrectionX = 0f
+            remainingCorrectionY = 0f
+            return
+        }
+
+        transform.x = authoritative.x
+        transform.y = authoritative.y
         predictedInputs.entries().forEach { entry ->
             ClientPredictionSystem.apply(entry.command, entry.deltaTime, transform, velocity)
         }
@@ -73,6 +95,7 @@ class ServerReconciliationSystem(
         const val DEFAULT_CORRECTION_RATE = 12f
         val TRANSFORM_MAPPER = ComponentMapper.getFor(TransformComponent::class.java)
         val VELOCITY_MAPPER = ComponentMapper.getFor(VelocityComponent::class.java)
+        val PHYSICS_BODY_MAPPER = ComponentMapper.getFor(PhysicsBodyComponent::class.java)
         val FAMILY: Family = Family.all(
             LocalPlayerComponent::class.java,
             TransformComponent::class.java,

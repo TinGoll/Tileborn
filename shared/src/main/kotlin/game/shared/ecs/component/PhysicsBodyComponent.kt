@@ -8,4 +8,8 @@ class PhysicsBodyComponent(
     val body: Body,
     /** Set after an authoritative teleport/correction to push Transform into Box2D once. */
     var synchronizeTransformToBody: Boolean = true,
+    /** Body transform immediately before the most recent fixed physics step. */
+    var previousX: Float = body.position.x,
+    var previousY: Float = body.position.y,
+    var previousRotationRadians: Float = body.angle,
 ) : Component

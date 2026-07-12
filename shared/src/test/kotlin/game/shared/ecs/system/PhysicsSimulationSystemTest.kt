@@ -70,6 +70,40 @@ class PhysicsSimulationSystemTest {
         }
     }
 
+    @Test
+    fun `dynamic players do not pass through each other`() {
+        val world = PhysicsWorldFactory.create()
+        val engine = Engine()
+        val physicsSystem = PhysicsSimulationSystem(world)
+        try {
+            val firstTransform = TransformComponent(x = 0f, y = 0f)
+            val secondTransform = TransformComponent(x = 2f, y = 0f)
+            engine.addEntity(engine.createEntity().apply {
+                add(firstTransform)
+                add(VelocityComponent(x = 4f, y = 0f))
+                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(world, firstTransform.x, firstTransform.y)))
+            })
+            engine.addEntity(engine.createEntity().apply {
+                add(secondTransform)
+                add(VelocityComponent())
+                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(world, secondTransform.x, secondTransform.y)))
+            })
+            engine.addSystem(physicsSystem)
+
+            repeat(120) { engine.update(GameConstants.PHYSICS_FIXED_TIME_STEP) }
+
+            assertTrue(
+                "Players overlapped: first=${firstTransform.x}, second=${secondTransform.x}",
+                secondTransform.x - firstTransform.x >= GameConstants.PLAYER_COLLISION_RADIUS * 2f - EPSILON,
+            )
+        } finally {
+            engine.removeAllEntities()
+            engine.removeSystem(physicsSystem)
+            physicsSystem.dispose()
+            world.dispose()
+        }
+    }
+
     private companion object {
         const val EPSILON = 0.0001f
     }

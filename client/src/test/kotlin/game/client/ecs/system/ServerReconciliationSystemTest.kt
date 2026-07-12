@@ -6,6 +6,8 @@ import game.client.ecs.component.LocalPlayerComponent
 import game.client.network.PredictedInputBuffer
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
+import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.InputCommand
 import org.junit.Assert.assertEquals
@@ -54,6 +56,24 @@ class ServerReconciliationSystemTest {
 
         assertTrue(entity.getComponent(TransformComponent::class.java).x > 0f)
         assertEquals(3, buffer.size)
+    }
+
+    @Test
+    fun `small physics correction preserves locally predicted body position`() {
+        val world = PhysicsWorldFactory.create()
+        try {
+            val entity = localEntity(x = 1f).apply {
+                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(world, 1f, 0f), false))
+            }
+            val system = ServerReconciliationSystem(PredictedInputBuffer(), snapDistance = 1.5f)
+
+            system.reconcile(entity, snapshot(x = 0.8f), acknowledgedSequence = 0)
+
+            assertEquals(1f, entity.getComponent(TransformComponent::class.java).x, 0f)
+            assertTrue(!entity.getComponent(PhysicsBodyComponent::class.java).synchronizeTransformToBody)
+        } finally {
+            world.dispose()
+        }
     }
 
     private fun localEntity(x: Float): Entity = Entity().apply {

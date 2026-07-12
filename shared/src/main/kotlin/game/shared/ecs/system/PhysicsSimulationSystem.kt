@@ -25,6 +25,10 @@ class PhysicsSimulationSystem(
     private val ownedBodies = IdentityHashMap<Entity, Body>()
     private var accumulator = 0f
 
+    /** Fraction remaining until the next fixed step, used only for client-side visual interpolation. */
+    val interpolationAlpha: Float
+        get() = accumulator / GameConstants.PHYSICS_FIXED_TIME_STEP
+
     override fun addedToEngine(engine: Engine) {
         entities = engine.getEntitiesFor(FAMILY)
         engine.addEntityListener(FAMILY, this)
@@ -52,6 +56,12 @@ class PhysicsSimulationSystem(
 
         accumulator += deltaTime.coerceIn(0f, MAX_FRAME_TIME)
         while (accumulator >= GameConstants.PHYSICS_FIXED_TIME_STEP) {
+            for (entity in physicsEntities) {
+                val physics = BODY_MAPPER.get(entity)
+                physics.previousX = physics.body.position.x
+                physics.previousY = physics.body.position.y
+                physics.previousRotationRadians = physics.body.angle
+            }
             world.step(
                 GameConstants.PHYSICS_FIXED_TIME_STEP,
                 GameConstants.PHYSICS_VELOCITY_ITERATIONS,
@@ -68,6 +78,9 @@ class PhysicsSimulationSystem(
         val transform = TRANSFORM_MAPPER.get(entity)
         if (physics.synchronizeTransformToBody) {
             physics.body.setTransform(transform.x, transform.y, transform.rotationDegrees * MathUtils.degreesToRadians)
+            physics.previousX = transform.x
+            physics.previousY = transform.y
+            physics.previousRotationRadians = transform.rotationDegrees * MathUtils.degreesToRadians
             physics.synchronizeTransformToBody = false
         }
         val velocity = VELOCITY_MAPPER.get(entity)

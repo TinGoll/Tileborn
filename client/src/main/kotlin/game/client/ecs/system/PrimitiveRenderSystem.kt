@@ -13,6 +13,7 @@ import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.utils.Disposable
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.InterpolatedTransformComponent
+import game.client.ecs.component.PhysicsInterpolatedTransformComponent
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.TransformComponent
 
@@ -43,9 +44,12 @@ class PrimitiveRenderSystem(
     private fun render(entity: Entity) {
         val transform = TRANSFORM_MAPPER.get(entity)
         val interpolatedTransform = INTERPOLATED_TRANSFORM_MAPPER.get(entity)
-        val x = interpolatedTransform?.x ?: transform.x
-        val y = interpolatedTransform?.y ?: transform.y
-        val rotationDegrees = interpolatedTransform?.rotationDegrees ?: transform.rotationDegrees
+        val physicsInterpolatedTransform = PHYSICS_INTERPOLATED_TRANSFORM_MAPPER.get(entity)
+        val x = physicsInterpolatedTransform?.x ?: interpolatedTransform?.x ?: transform.x
+        val y = physicsInterpolatedTransform?.y ?: interpolatedTransform?.y ?: transform.y
+        val rotationDegrees = physicsInterpolatedTransform?.rotationDegrees
+            ?: interpolatedTransform?.rotationDegrees
+            ?: transform.rotationDegrees
         val primitive = RENDER_MAPPER.get(entity)
         renderer.color(primitive.red, primitive.green, primitive.blue, primitive.alpha)
 
@@ -76,6 +80,8 @@ class PrimitiveRenderSystem(
             ComponentMapper.getFor(TransformComponent::class.java)
         val INTERPOLATED_TRANSFORM_MAPPER: ComponentMapper<InterpolatedTransformComponent> =
             ComponentMapper.getFor(InterpolatedTransformComponent::class.java)
+        val PHYSICS_INTERPOLATED_TRANSFORM_MAPPER: ComponentMapper<PhysicsInterpolatedTransformComponent> =
+            ComponentMapper.getFor(PhysicsInterpolatedTransformComponent::class.java)
         val RENDER_MAPPER: ComponentMapper<RenderPrimitiveComponent> =
             ComponentMapper.getFor(RenderPrimitiveComponent::class.java)
         val FAMILY: Family = Family.all(

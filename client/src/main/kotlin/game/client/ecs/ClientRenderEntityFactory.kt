@@ -6,6 +6,7 @@ import com.badlogic.gdx.physics.box2d.World
 import game.client.ecs.component.CameraTargetComponent
 import game.client.ecs.component.InterpolatedTransformComponent
 import game.client.ecs.component.LocalPlayerComponent
+import game.client.ecs.component.PhysicsInterpolatedTransformComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
@@ -24,6 +25,7 @@ object ClientRenderEntityFactory {
             add(TransformComponent(x = x, y = y))
             add(VelocityComponent())
             add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, x, y)))
+            add(PhysicsInterpolatedTransformComponent(x = x, y = y))
             add(PlayerInputComponent())
             add(LocalPlayerComponent())
             add(
@@ -43,6 +45,8 @@ object ClientRenderEntityFactory {
             add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
+            add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, snapshot.x, snapshot.y)))
+            add(PhysicsInterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(PlayerInputComponent())
             add(LocalPlayerComponent())
             add(
