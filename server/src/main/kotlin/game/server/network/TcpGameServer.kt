@@ -83,6 +83,9 @@ class TcpGameServer(
         while (running.get()) {
             try {
                 val client = serverSocket.accept()
+                // The protocol sends small, real-time input and snapshot messages. Disabling
+                // Nagle avoids avoidable coalescing delays for these writes.
+                client.tcpNoDelay = true
                 clients += client
                 logger("TCP connection opened from ${client.remoteSocketAddress}")
                 Thread({ handleClient(client) }, "tcp-game-server-client").apply {

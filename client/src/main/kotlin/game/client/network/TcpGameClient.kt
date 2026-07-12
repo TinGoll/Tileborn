@@ -100,6 +100,9 @@ class TcpGameClient(
         val clientSocket = Socket()
         try {
             clientSocket.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MILLIS)
+            // Input commands and snapshots are small, latency-sensitive messages. Do not wait for
+            // TCP to coalesce them into a larger packet.
+            clientSocket.tcpNoDelay = true
             socket = clientSocket
             logger("Connected to server $host:$port")
 
@@ -217,7 +220,9 @@ class TcpGameClient(
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 1_000
         const val JOIN_TIMEOUT_MILLIS = 500L
-        const val READ_POLL_TIMEOUT_MILLIS = 100
+        // The network thread sends queued input before each read. Keep this short so outgoing
+        // intent is never held behind an idle socket read for a visible amount of time.
+        const val READ_POLL_TIMEOUT_MILLIS = 10
         const val DEFAULT_PING_INTERVAL_MILLIS = 1_000L
     }
 }

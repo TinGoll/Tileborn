@@ -71,7 +71,9 @@ class SnapshotInterpolationSystem(
 
     private companion object {
         const val PRIORITY = 150
-        const val DEFAULT_INTERPOLATION_DELAY_TICKS = 2f
+        // One server tick (50 ms at the default rate) is enough to interpolate adjacent
+        // snapshots without adding a perceptible delay to nearby players.
+        const val DEFAULT_INTERPOLATION_DELAY_TICKS = 1f
         const val DEFAULT_SERVER_TICKS_PER_SECOND = 20f
         val IDENTITY_MAPPER: ComponentMapper<NetworkIdentityComponent> =
             ComponentMapper.getFor(NetworkIdentityComponent::class.java)

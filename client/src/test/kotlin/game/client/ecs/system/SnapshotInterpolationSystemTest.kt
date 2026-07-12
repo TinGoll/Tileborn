@@ -9,6 +9,24 @@ import org.junit.Test
 
 class SnapshotInterpolationSystemTest {
     @Test
+    fun `default interpolation stays one server tick behind latest snapshot`() {
+        val engine = Engine()
+        val system = SnapshotInterpolationSystem()
+        val interpolated = InterpolatedTransformComponent()
+        engine.addEntity(engine.createEntity().apply {
+            add(NetworkIdentityComponent(networkEntityId = 4L))
+            add(interpolated)
+        })
+        engine.addSystem(system)
+        system.recordSnapshot(0, snapshot(x = 0f))
+        system.recordSnapshot(10, snapshot(x = 10f))
+
+        engine.update(0.5f)
+
+        assertEquals(9f, interpolated.x, 0.001f)
+    }
+
+    @Test
     fun `remote entity uses interpolated transform`() {
         val engine = Engine()
         val system = SnapshotInterpolationSystem(interpolationDelayTicks = 0f)
