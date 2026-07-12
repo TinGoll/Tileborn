@@ -4,6 +4,11 @@ import com.badlogic.gdx.ApplicationAdapter
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.headless.HeadlessApplication
 import game.server.network.TcpGameServer
+import game.server.persistence.CharacterPersistenceService
+import game.server.persistence.CharacterRepository
+import game.server.persistence.InMemoryCharacterRepository
+import game.server.persistence.InMemorySessionRepository
+import game.server.persistence.SessionRepository
 import game.shared.protocol.NetworkDefaults
 import game.shared.protocol.InteractCommand
 
@@ -18,12 +23,15 @@ class ServerApplication(
     private val consoleFactory: ((() -> Unit, (String) -> Unit) -> ServerConsole)? = { onStopRequested, consoleLogger ->
         ServerConsole(onStopRequested = onStopRequested, logger = consoleLogger)
     },
+    private val characterRepository: CharacterRepository = InMemoryCharacterRepository(),
+    private val sessionRepository: SessionRepository = InMemorySessionRepository(),
     private val logger: (String) -> Unit = ::println,
 ) {
     private var world: ServerWorld? = null
     private var networkServer: TcpGameServer? = null
     private var ownedHeadlessApplication: HeadlessApplication? = null
     private var stopped: Boolean = true
+    private val characterPersistence = CharacterPersistenceService(characterRepository, sessionRepository)
 
     fun run(maxTicks: Long? = null) {
         ensureHeadlessApplication()
@@ -41,7 +49,7 @@ class ServerApplication(
             mapIdProvider = { serverWorld.gameMapData.mapId },
             serverTickProvider = { loop.serverTick },
             initialSnapshotProvider = { playerEntityId ->
-                serverWorld.spawnPlayer(playerEntityId)
+                serverWorld.spawnPlayer(playerEntityId, savedState = characterPersistence.stateForEntity(playerEntityId))
                 serverWorld.buildSnapshot(loop.serverTick)
             },
             inputCommandHandler = { playerEntityId, inputCommand ->
@@ -66,12 +74,34 @@ class ServerApplication(
             },
             disconnectSnapshotProvider = { playerEntityId ->
                 serverWorld.despawnPlayer(playerEntityId)
+                characterPersistence.forgetEntity(playerEntityId)
                 serverWorld.buildSnapshot(loop.serverTick)
             },
             reconnectSnapshotProvider = {
                 serverWorld.buildSnapshot(loop.serverTick)
             },
             snapshotForRecipient = serverWorld::filterSnapshotForRecipient,
+            sessionEstablishedHandler = { session ->
+                val spawn = serverWorld.gameMapData.requireSpawnPoint("default")
+                characterPersistence.restoreForJoin(
+                    entityId = session.entityId,
+                    sessionToken = session.sessionToken,
+                    nickname = session.playerName,
+                    defaultMapId = serverWorld.gameMapData.mapId,
+                    defaultPositionX = spawn.x,
+                    defaultPositionY = spawn.y,
+                )
+            },
+            sessionDisconnectedHandler = { playerEntityId ->
+                serverWorld.playerPosition(playerEntityId)?.let { (x, y) ->
+                    characterPersistence.saveOnDisconnect(
+                        entityId = playerEntityId,
+                        mapId = serverWorld.gameMapData.mapId,
+                        positionX = x,
+                        positionY = y,
+                    )
+                }
+            },
             logger = logger,
         ).also { it.start() }
 

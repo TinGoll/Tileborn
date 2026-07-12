@@ -35,6 +35,8 @@ class TcpGameServer(
     private val disconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
     private val reconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
     private val snapshotForRecipient: (Int, WorldSnapshot) -> WorldSnapshot = { _, snapshot -> snapshot },
+    private val sessionEstablishedHandler: ((EstablishedSession) -> Unit)? = null,
+    private val sessionDisconnectedHandler: ((Int) -> Unit)? = null,
     private val sessionTimeoutMillis: Long = SESSION_TIMEOUT_MILLIS,
     private val clockMillis: () -> Long = { System.currentTimeMillis() },
     private val logger: (String) -> Unit = ::println,
@@ -161,13 +163,21 @@ class TcpGameServer(
                     expireDisconnectedSessions()
 
                     val retainedSession = resumeOrCreateSession(message)
+                    val isReconnect = retainedSession.wasDisconnected
+                    sessionEstablishedHandler?.invoke(
+                        EstablishedSession(
+                            entityId = retainedSession.entityId,
+                            sessionToken = retainedSession.token,
+                            playerName = message.playerName,
+                            isReconnect = isReconnect,
+                        ),
+                    )
                     val accepted = JoinAccepted(
                         playerEntityId = retainedSession.entityId,
                         mapId = mapIdProvider(),
                         serverTick = serverTickProvider(),
                         sessionToken = retainedSession.token,
                     )
-                    val isReconnect = retainedSession.wasDisconnected
                     writer.writeLine(ProtocolCodec.encodeServer(accepted))
                     logger("${if (isReconnect) "Reconnect" else "Join"} accepted for '${message.playerName}' entity=${accepted.playerEntityId}")
                     val initialSnapshot = if (isReconnect) {
@@ -247,7 +257,7 @@ class TcpGameServer(
         } finally {
             sessions.firstOrNull { it.socket == socket }?.let { session ->
                 sessions -= session
-                markDisconnected(session)
+                if (markDisconnected(session)) sessionDisconnectedHandler?.invoke(session.entityId)
             }
             clients -= socket
             socket.closeQuietly()
@@ -271,16 +281,18 @@ class TcpGameServer(
         ).also { retainedSessionsByToken[it.token] = it }
     }
 
-    private fun markDisconnected(session: ClientSession) {
+    private fun markDisconnected(session: ClientSession): Boolean =
         synchronized(sessionLock) {
             val retained = retainedSessionsByToken[session.sessionToken]
             if (retained?.activeConnection === session) {
                 retained.activeConnection = null
                 retained.disconnectedAtMillis = clockMillis()
                 logger("Session retained entity=${session.entityId} timeout=${sessionTimeoutMillis}ms")
+                true
+            } else {
+                false
             }
         }
-    }
 
     private fun sendRejected(writer: BufferedWriter, reason: String) {
         writer.writeLine(ProtocolCodec.encodeServer(JoinRejected(reason = reason)))
@@ -343,3 +355,11 @@ class TcpGameServer(
         const val SESSION_TIMEOUT_MILLIS = 10_000L
     }
 }
+
+/** Network session metadata supplied to server-only lifecycle integrations. */
+data class EstablishedSession(
+    val entityId: Int,
+    val sessionToken: String,
+    val playerName: String,
+    val isReconnect: Boolean,
+)

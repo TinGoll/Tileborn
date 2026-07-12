@@ -4,6 +4,7 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.component.ServerAuthorityComponent
 import game.server.ecs.ServerEcsWorld
+import game.server.persistence.SavedCharacterState
 import game.shared.constants.InterestManagementConstants
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PhysicsBodyComponent
@@ -50,17 +51,31 @@ class ServerWorld(
     }
 
     @Synchronized
-    fun spawnPlayer(serverEntityId: Int, spawnId: String = DEFAULT_SPAWN_ID) =
-        gameMapData.requireSpawnPoint(spawnId).let { spawn ->
+    fun spawnPlayer(
+        serverEntityId: Int,
+        spawnId: String = DEFAULT_SPAWN_ID,
+        savedState: SavedCharacterState? = null,
+    ) = gameMapData.requireSpawnPoint(spawnId).let { spawn ->
+            val position = savedState
+                ?.takeIf { it.mapId == gameMapData.mapId }
+                ?.let { it.positionX to it.positionY }
+                ?: (spawn.x to spawn.y)
             engine.createEntity().apply {
-                add(TransformComponent(x = spawn.x, y = spawn.y))
+                add(TransformComponent(x = position.first, y = position.second))
                 add(NetworkIdentityComponent(networkEntityId = serverEntityId.toLong()))
                 add(PlayerInputComponent())
                 add(VelocityComponent())
-                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(ecsWorld.physicsWorld, spawn.x, spawn.y)))
+                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(ecsWorld.physicsWorld, position.first, position.second)))
                 add(ServerAuthorityComponent())
             }.also(engine::addEntity)
         }
+
+    /** Reads an authoritative ECS position at a persistence boundary, never during normal ticks. */
+    @Synchronized
+    fun playerPosition(serverEntityId: Int): Pair<Float, Float>? =
+        engine.entities.firstOrNull { candidate ->
+            candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
+        }?.getComponent(TransformComponent::class.java)?.let { it.x to it.y }
 
     @Synchronized
     fun despawnPlayer(serverEntityId: Int): Boolean {
