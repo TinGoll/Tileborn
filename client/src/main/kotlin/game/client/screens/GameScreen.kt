@@ -1,6 +1,7 @@
 package game.client.screens
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
 import com.badlogic.ashley.core.ComponentMapper
 import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.OrthographicCamera
@@ -23,9 +24,12 @@ import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
 import game.shared.map.TiledGameplayMapParser
+import game.shared.map.MapInteractable
+import game.shared.map.MapInteractableType
 import game.shared.math.WorldUnits
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.InteractCommand
 import game.shared.protocol.WorldSnapshot
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
@@ -49,6 +53,8 @@ class GameScreen(
     private val screenEntities = mutableListOf<Entity>()
     private val networkEntities = ClientEntityRegistry()
     private var appliedSnapshot: WorldSnapshot? = null
+    private var nextInteractionSequence = 1L
+    private var lastGameEvent: String? = null
 
     init {
         check(assets.isFinished()) {
@@ -82,6 +88,7 @@ class GameScreen(
                     connectionStateProvider = { networkClient.connectionState },
                     pingMillisProvider = { networkClient.pingMillis },
                     visibleEntityCountProvider = networkEntities::size,
+                    lastGameEventProvider = { lastGameEvent },
                 ),
             )
             cameraFollowSystem?.update(0f)
@@ -92,8 +99,10 @@ class GameScreen(
     override fun render(delta: Float) {
         clearScreen(red = 0.7f, green = 0.7f, blue = 0.7f)
         applyLatestSnapshot()
+        applyGameEvents()
         ecsWorld.engine.update(delta)
         sendLocalInput()
+        sendInteractionIfRequested()
         physicsDebugRenderer?.render(ecsWorld.physicsWorld, camera.combined)
         debugOverlay?.render()
     }
@@ -131,6 +140,7 @@ class GameScreen(
         mapRenderer = null
         mapData = null
         appliedSnapshot = null
+        lastGameEvent = null
         ecsWorld.predictedInputBuffer.clear()
     }
 
@@ -140,6 +150,33 @@ class GameScreen(
 
     private fun applyLatestSnapshot() {
         networkClient.drainWorldSnapshots().forEach(::applySnapshot)
+    }
+
+    private fun applyGameEvents() {
+        networkClient.drainGameEvents().forEach { event ->
+            lastGameEvent = event.message
+            Gdx.app?.log("GameScreen", "Interaction event ${event.eventType}: ${event.message}")
+        }
+    }
+
+    private fun sendInteractionIfRequested() {
+        if (!Gdx.input.isKeyJustPressed(Input.Keys.E)) return
+        val playerId = networkClient.localPlayerEntityId ?: return
+        val transform = findNetworkEntity(playerId)?.getComponent(TransformComponent::class.java) ?: return
+        val target = mapData?.let { data ->
+            (data.triggers.map { MapInteractable(it.id, MapInteractableType.TRIGGER, it.x, it.y, it.width, it.height) } +
+                data.portals.map { MapInteractable(it.id, MapInteractableType.PORTAL, it.x, it.y, it.width, it.height) })
+                .minByOrNull { squaredDistanceToRectangle(transform.x, transform.y, it) }
+        } ?: return
+        networkClient.sendInteract(InteractCommand(nextInteractionSequence++, target.id))
+    }
+
+    private fun squaredDistanceToRectangle(x: Float, y: Float, target: MapInteractable): Float {
+        val nearestX = x.coerceIn(target.x, target.x + target.width)
+        val nearestY = y.coerceIn(target.y, target.y + target.height)
+        val deltaX = x - nearestX
+        val deltaY = y - nearestY
+        return deltaX * deltaX + deltaY * deltaY
     }
 
     private fun applySnapshot(snapshot: WorldSnapshot) {

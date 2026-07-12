@@ -45,6 +45,7 @@ class DebugOverlay(
             "Map: ${snapshot.mapId}",
             "Connection: ${snapshot.connectionState.name.lowercase(Locale.US)}",
             "Ping: ${snapshot.pingMillis?.let { "$it ms" } ?: "n/a"}",
+            "Interaction: ${snapshot.lastGameEvent ?: "none"}",
         )
     }
 }

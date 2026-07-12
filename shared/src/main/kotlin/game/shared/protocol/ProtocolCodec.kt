@@ -12,6 +12,7 @@ object ProtocolCodec {
     fun encodeClient(message: ClientMessage): String = when (message) {
         is JoinRequest -> gson.toJson(message)
         is InputCommand -> gson.toJson(message)
+        is InteractCommand -> gson.toJson(message)
         is PingRequest -> gson.toJson(message)
     }
 
@@ -19,6 +20,7 @@ object ProtocolCodec {
         return when (messageType(payload)) {
             MessageType.JOIN_REQUEST -> gson.fromJson(payload, JoinRequest::class.java)
             MessageType.INPUT_COMMAND -> gson.fromJson(payload, InputCommand::class.java)
+            MessageType.INTERACT_COMMAND -> gson.fromJson(payload, InteractCommand::class.java)
             MessageType.PING_REQUEST -> gson.fromJson(payload, PingRequest::class.java)
             else -> throw JsonParseException("Message type is not a client message.")
         }
@@ -28,6 +30,7 @@ object ProtocolCodec {
         is JoinAccepted -> gson.toJson(message)
         is JoinRejected -> gson.toJson(message)
         is WorldSnapshot -> gson.toJson(message)
+        is GameEvent -> gson.toJson(message)
         is PongResponse -> gson.toJson(message)
     }
 
@@ -36,6 +39,7 @@ object ProtocolCodec {
             MessageType.JOIN_ACCEPTED -> gson.fromJson(payload, JoinAccepted::class.java)
             MessageType.JOIN_REJECTED -> gson.fromJson(payload, JoinRejected::class.java)
             MessageType.WORLD_SNAPSHOT -> gson.fromJson(payload, WorldSnapshot::class.java)
+            MessageType.GAME_EVENT -> gson.fromJson(payload, GameEvent::class.java)
             MessageType.PONG_RESPONSE -> gson.fromJson(payload, PongResponse::class.java)
             else -> throw JsonParseException("Message type is not a server message.")
         }

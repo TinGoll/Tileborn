@@ -5,6 +5,8 @@ import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
 import game.shared.protocol.InputCommand
+import game.shared.protocol.InteractCommand
+import game.shared.protocol.GameEvent
 import game.shared.protocol.NetworkDefaults
 import game.shared.protocol.PongResponse
 import game.shared.protocol.ProtocolCodec
@@ -41,7 +43,9 @@ class TcpGameClient(
     private var socket: Socket? = null
     private var thread: Thread? = null
     private val outgoingInput = ConcurrentLinkedQueue<InputCommand>()
+    private val outgoingInteractions = ConcurrentLinkedQueue<InteractCommand>()
     private val receivedSnapshots = ConcurrentLinkedQueue<WorldSnapshot>()
+    private val receivedGameEvents = ConcurrentLinkedQueue<GameEvent>()
 
     @Volatile
     override var connectionState: ConnectionState = ConnectionState.DISCONNECTED
@@ -75,7 +79,9 @@ class TcpGameClient(
         localPlayerEntityId = null
         pingMillis = null
         outgoingInput.clear()
+        outgoingInteractions.clear()
         receivedSnapshots.clear()
+        receivedGameEvents.clear()
         connectionState = if (sessionToken == null) ConnectionState.CONNECTING else ConnectionState.RECONNECTING
         logger("TCP client connecting to $host:$port")
         thread = Thread(::runClient, "tcp-game-client").apply {
@@ -90,8 +96,18 @@ class TcpGameClient(
         }
     }
 
+    override fun sendInteract(command: InteractCommand) {
+        if (connectionState == ConnectionState.CONNECTED && !closed.get()) {
+            outgoingInteractions += command
+        }
+    }
+
     override fun drainWorldSnapshots(): List<WorldSnapshot> = buildList {
         while (true) add(receivedSnapshots.poll() ?: break)
+    }
+
+    override fun drainGameEvents(): List<GameEvent> = buildList {
+        while (true) add(receivedGameEvents.poll() ?: break)
     }
 
     override fun close() {
@@ -200,6 +216,7 @@ class TcpGameClient(
         pingTracker.delayNextPing(clockMillis())
         while (!closed.get()) {
             drainOutgoingInput(writer)
+            drainOutgoingInteractions(writer)
 
             pingTracker.nextPing(clockMillis())?.let { ping ->
                 writer.writeLine(ProtocolCodec.encodeClient(ping))
@@ -219,6 +236,7 @@ class TcpGameClient(
             val message = ProtocolCodec.decodeServer(payload)
             lastServerMessage = message
             if (message is WorldSnapshot) receivedSnapshots += message
+            if (message is GameEvent) receivedGameEvents += message
             if (message is PongResponse) {
                 pingTracker.recordPong(message, clockMillis())?.let { roundTripMillis ->
                     pingMillis = roundTripMillis
@@ -230,6 +248,13 @@ class TcpGameClient(
     private fun drainOutgoingInput(writer: BufferedWriter) {
         while (true) {
             val command = outgoingInput.poll() ?: return
+            writer.writeLine(ProtocolCodec.encodeClient(command))
+        }
+    }
+
+    private fun drainOutgoingInteractions(writer: BufferedWriter) {
+        while (true) {
+            val command = outgoingInteractions.poll() ?: return
             writer.writeLine(ProtocolCodec.encodeClient(command))
         }
     }

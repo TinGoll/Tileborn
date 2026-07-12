@@ -4,6 +4,8 @@ import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
 import game.shared.protocol.InputCommand
+import game.shared.protocol.InteractCommand
+import game.shared.protocol.GameEvent
 import game.shared.protocol.PingRequest
 import game.shared.protocol.PongResponse
 import game.shared.protocol.Protocol
@@ -29,6 +31,7 @@ class TcpGameServer(
     private val serverTickProvider: () -> Long,
     private val initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
     private val inputCommandHandler: ((Int, InputCommand) -> WorldSnapshot?)? = null,
+    private val interactCommandHandler: ((Int, InteractCommand) -> GameEvent?)? = null,
     private val disconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
     private val reconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
     private val snapshotForRecipient: (Int, WorldSnapshot) -> WorldSnapshot = { _, snapshot -> snapshot },
@@ -221,6 +224,9 @@ class TcpGameServer(
                                         excludedEntityId = accepted.playerEntityId,
                                     )
                                 }
+                            }
+                            is InteractCommand -> {
+                                interactCommandHandler?.invoke(accepted.playerEntityId, clientMessage)?.let(session::send)
                             }
                             else -> {
                                 // JoinRequest is only valid as the first message in this line-delimited session.

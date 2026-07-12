@@ -62,6 +62,26 @@ class TiledGameplayMapParserTest {
         assertTrue(messages.single().contains("collision"))
     }
 
+    @Test
+    fun `trigger object is available as an interactable`() {
+        val map = completeMap()
+        try {
+            map.layers[TiledGameplayMapParser.TRIGGERS_LAYER].objects.add(
+                RectangleMapObject(32f, 64f, 32f, 32f).withProperties(
+                    "id" to 6,
+                    "triggerId" to "welcome",
+                    "type" to "message",
+                ),
+            )
+
+            val interactable = TiledGameplayMapParser().parse("test_map", map).interactableById(6)
+
+            assertEquals(MapInteractable(6, MapInteractableType.TRIGGER, 1f, 2f, 1f, 1f), interactable)
+        } finally {
+            map.dispose()
+        }
+    }
+
     private fun completeMap() = TiledMap().apply {
         layers.add(MapLayer().named(TiledGameplayMapParser.COLLISION_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.SPAWN_POINTS_LAYER))

@@ -10,4 +10,5 @@ data class DebugOverlaySnapshot(
     val mapId: String,
     val connectionState: ConnectionState,
     val pingMillis: Long?,
+    val lastGameEvent: String?,
 )

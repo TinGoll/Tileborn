@@ -12,7 +12,12 @@ import game.shared.ecs.component.VelocityComponent
 import game.shared.input.InputCommandValidator
 import game.shared.map.GameMapData
 import game.shared.map.TiledGameplayMapParser
+import game.shared.map.MapInteractableType
+import game.shared.map.interactableById
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.GameEvent
+import game.shared.protocol.GameEventType
+import game.shared.protocol.InteractCommand
 import game.shared.protocol.InputCommand
 import game.shared.protocol.WorldSnapshot
 
@@ -81,6 +86,45 @@ class ServerWorld(
         return true
     }
 
+    /** Validates and executes a player interaction using only authoritative ECS/map state. */
+    @Synchronized
+    fun interact(serverEntityId: Int, command: InteractCommand): InteractionResult {
+        val entity = engine.entities.firstOrNull { candidate ->
+            candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
+        } ?: return InteractionResult.Rejected("unknown player")
+        val transform = entity.getComponent(TransformComponent::class.java)
+            ?: return InteractionResult.Rejected("player has no transform")
+        val target = gameMapData.interactableById(command.targetObjectId)
+            ?: return InteractionResult.Rejected("unknown object id ${command.targetObjectId}")
+        if (squaredDistanceToRectangle(transform.x, transform.y, target.x, target.y, target.width, target.height) >
+            INTERACTION_RADIUS_WORLD_UNITS * INTERACTION_RADIUS_WORLD_UNITS
+        ) return InteractionResult.Rejected("object id ${target.id} is out of range")
+
+        return when (target.type) {
+            MapInteractableType.TRIGGER -> {
+                val trigger = gameMapData.triggers.first { it.id == target.id }
+                if (trigger.type != MESSAGE_TRIGGER_TYPE) {
+                    return InteractionResult.Rejected("unsupported trigger type ${trigger.type}")
+                }
+                InteractionResult.Accepted(
+                    GameEvent(GameEventType.TRIGGER_ENTERED, target.id, "player entered trigger ${trigger.triggerId}"),
+                )
+            }
+            MapInteractableType.PORTAL -> {
+                val portal = gameMapData.portals.first { it.id == target.id }
+                if (portal.targetMap != gameMapData.mapId) {
+                    return InteractionResult.Rejected("portal ${portal.portalId} targets unsupported map ${portal.targetMap}")
+                }
+                val spawn = gameMapData.requireSpawnPoint(portal.targetSpawn)
+                transform.x = spawn.x
+                transform.y = spawn.y
+                InteractionResult.Accepted(
+                    GameEvent(GameEventType.PORTAL_USED, target.id, "player used portal ${portal.portalId}"),
+                )
+            }
+        }
+    }
+
     @Synchronized
     fun buildSnapshot(
         serverTick: Long,
@@ -145,11 +189,28 @@ class ServerWorld(
         return x * x + y * y
     }
 
+    private fun squaredDistanceToRectangle(
+        pointX: Float, pointY: Float, x: Float, y: Float, width: Float, height: Float,
+    ): Float {
+        val nearestX = pointX.coerceIn(x, x + width)
+        val nearestY = pointY.coerceIn(y, y + height)
+        val deltaX = pointX - nearestX
+        val deltaY = pointY - nearestY
+        return deltaX * deltaX + deltaY * deltaY
+    }
+
     override fun dispose() {
         ecsWorld.dispose()
     }
 
     private companion object {
         const val DEFAULT_SPAWN_ID = "default"
+        const val INTERACTION_RADIUS_WORLD_UNITS = 1f
+        const val MESSAGE_TRIGGER_TYPE = "message"
     }
+}
+
+sealed interface InteractionResult {
+    data class Accepted(val event: GameEvent) : InteractionResult
+    data class Rejected(val reason: String) : InteractionResult
 }

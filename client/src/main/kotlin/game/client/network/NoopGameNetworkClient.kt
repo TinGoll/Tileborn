@@ -2,6 +2,7 @@ package game.client.network
 
 import game.client.debug.ConnectionState
 import game.shared.protocol.InputCommand
+import game.shared.protocol.InteractCommand
 import game.shared.protocol.ServerMessage
 
 /** Test/local client that performs no network activity. */
@@ -14,6 +15,8 @@ object NoopGameNetworkClient : GameNetworkClient {
     override fun connect() = Unit
 
     override fun sendInput(command: InputCommand) = Unit
+
+    override fun sendInteract(command: InteractCommand) = Unit
 
     override fun close() = Unit
 }

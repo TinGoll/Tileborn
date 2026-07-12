@@ -105,6 +105,15 @@ class ProtocolMessagesTest {
         assertEquals(pong, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(pong)))
     }
 
+    @Test
+    fun `interaction command and game event serialize and deserialize`() {
+        val command = InteractCommand(interactionSequence = 3L, targetObjectId = 6)
+        val event = GameEvent(GameEventType.TRIGGER_ENTERED, objectId = 6, message = "player entered trigger welcome")
+
+        assertEquals(command, ProtocolCodec.decodeClient(ProtocolCodec.encodeClient(command)))
+        assertEquals(event, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(event)))
+    }
+
     @Test(expected = JsonParseException::class)
     fun `direct client position message is not supported`() {
         ProtocolCodec.decodeClient(

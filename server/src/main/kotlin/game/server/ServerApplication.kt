@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.headless.HeadlessApplication
 import game.server.network.TcpGameServer
 import game.shared.protocol.NetworkDefaults
+import game.shared.protocol.InteractCommand
 
 /** Coordinates authoritative server startup, fixed-tick execution, and shutdown. */
 class ServerApplication(
@@ -50,6 +51,18 @@ class ServerApplication(
                     serverTick = loop.serverTick,
                     acknowledgedInputSequence = serverWorld.acknowledgedInputSequence(playerEntityId),
                 )
+            },
+            interactCommandHandler = { playerEntityId, command ->
+                when (val result = serverWorld.interact(playerEntityId, command)) {
+                    is InteractionResult.Accepted -> {
+                        logger("Interaction accepted entity=$playerEntityId object=${command.targetObjectId} event=${result.event.eventType}")
+                        result.event
+                    }
+                    is InteractionResult.Rejected -> {
+                        logger("Interaction rejected entity=$playerEntityId object=${command.targetObjectId}: ${result.reason}")
+                        null
+                    }
+                }
             },
             disconnectSnapshotProvider = { playerEntityId ->
                 serverWorld.despawnPlayer(playerEntityId)

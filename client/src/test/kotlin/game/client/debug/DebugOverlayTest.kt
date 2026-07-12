@@ -41,6 +41,7 @@ class DebugOverlayTest {
                 "Map: debug_map",
                 "Connection: local",
                 "Ping: 42 ms",
+                "Interaction: none",
             ),
             renderer.lastLines,
         )
