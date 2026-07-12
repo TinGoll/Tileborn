@@ -3,6 +3,7 @@ package game.client.ecs
 import com.badlogic.ashley.core.Engine
 import game.client.ecs.component.CameraTargetComponent
 import game.client.ecs.component.LocalPlayerComponent
+import game.client.ecs.component.InterpolatedTransformComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
@@ -89,5 +90,18 @@ class ClientRenderEntityFactoryTest {
         assertNotNull(player.getComponent(CameraTargetComponent::class.java))
         assertNotNull(player.getComponent(LocalPlayerComponent::class.java))
         physicsWorld.dispose()
+    }
+
+    @Test
+    fun `remote player has an interpolated render transform`() {
+        val player = ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
+            Engine(),
+            EntitySnapshot(entityId = 7, x = 2f, y = 3f, velocityX = 0f, velocityY = 0f),
+        )
+
+        val interpolated = player.getComponent(InterpolatedTransformComponent::class.java)
+        assertNotNull(interpolated)
+        assertEquals(2f, interpolated.x, 0f)
+        assertEquals(3f, interpolated.y, 0f)
     }
 }

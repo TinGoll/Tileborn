@@ -114,6 +114,7 @@ class GameScreen(
         screenEntities.forEach(ecsWorld.engine::removeEntity)
         screenEntities.clear()
         networkEntities.clear().forEach(ecsWorld.engine::removeEntity)
+        ecsWorld.snapshotInterpolationSystem.clearSnapshots()
         collisionBodies.forEach(ecsWorld.physicsWorld::destroyBody)
         collisionBodies.clear()
         cameraFollowSystem?.let(ecsWorld.engine::removeSystem)
@@ -180,8 +181,13 @@ class GameScreen(
                     entitySnapshot,
                 )
                 networkEntities.put(entitySnapshot.entityId, created)
+                ecsWorld.snapshotInterpolationSystem.recordSnapshot(snapshot.serverTick, entitySnapshot)
             } else if (entity != null) {
-                applySnapshotToEntity(entity, entitySnapshot)
+                if (entitySnapshot.entityId == localPlayerId) {
+                    applySnapshotToEntity(entity, entitySnapshot)
+                } else {
+                    applyRemoteSnapshotToEntity(entity, snapshot.serverTick, entitySnapshot)
+                }
             }
         }
         appliedSnapshot = snapshot
@@ -192,6 +198,7 @@ class GameScreen(
         networkEntities.get(serverEntityId)
 
     private fun removeNetworkEntity(serverEntityId: Int) {
+        ecsWorld.snapshotInterpolationSystem.removeEntity(serverEntityId)
         networkEntities.remove(serverEntityId)?.let(ecsWorld.engine::removeEntity)
     }
 
@@ -205,6 +212,18 @@ class GameScreen(
             velocity.y = snapshot.velocityY
         }
         PHYSICS_BODY_MAPPER.get(entity)?.body?.setTransform(snapshot.x, snapshot.y, 0f)
+    }
+
+    private fun applyRemoteSnapshotToEntity(entity: Entity, serverTick: Long, snapshot: EntitySnapshot) {
+        TRANSFORM_MAPPER.get(entity)?.let { transform ->
+            transform.x = snapshot.x
+            transform.y = snapshot.y
+        }
+        VELOCITY_MAPPER.get(entity)?.let { velocity ->
+            velocity.x = snapshot.velocityX
+            velocity.y = snapshot.velocityY
+        }
+        ecsWorld.snapshotInterpolationSystem.recordSnapshot(serverTick, snapshot)
     }
 
     private companion object {

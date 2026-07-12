@@ -4,6 +4,7 @@ import com.badlogic.ashley.core.Engine
 import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.physics.box2d.World
 import game.client.ecs.component.CameraTargetComponent
+import game.client.ecs.component.InterpolatedTransformComponent
 import game.client.ecs.component.LocalPlayerComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
@@ -60,6 +61,7 @@ object ClientRenderEntityFactory {
         engine.createEntity().apply {
             add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
+            add(InterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
             add(
                 RenderPrimitiveComponent(

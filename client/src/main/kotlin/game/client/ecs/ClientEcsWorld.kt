@@ -5,6 +5,7 @@ import com.badlogic.gdx.physics.box2d.World
 import com.badlogic.gdx.utils.Disposable
 import game.client.ecs.system.ClientInitializationSystem
 import game.client.ecs.system.InputSystem
+import game.client.ecs.system.SnapshotInterpolationSystem
 import game.client.input.GameInputSource
 import game.client.input.KeyboardInputSource
 import game.shared.ecs.system.PhysicsSimulationSystem
@@ -16,16 +17,19 @@ class ClientEcsWorld(
 ) : Disposable {
     val physicsWorld: World = PhysicsWorldFactory.create()
     private val physicsSimulationSystem = PhysicsSimulationSystem(physicsWorld)
+    val snapshotInterpolationSystem = SnapshotInterpolationSystem()
 
     val engine: Engine = Engine().apply {
         addSystem(ClientInitializationSystem())
         addSystem(InputSystem(inputSource))
+        addSystem(snapshotInterpolationSystem)
         addSystem(physicsSimulationSystem)
     }
 
     override fun dispose() {
         engine.removeAllEntities()
         engine.removeSystem(physicsSimulationSystem)
+        engine.removeSystem(snapshotInterpolationSystem)
         physicsSimulationSystem.dispose()
         physicsWorld.dispose()
     }

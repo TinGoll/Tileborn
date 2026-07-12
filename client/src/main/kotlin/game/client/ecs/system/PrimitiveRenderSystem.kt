@@ -12,6 +12,7 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.utils.Disposable
 import game.client.ecs.component.PrimitiveShape
+import game.client.ecs.component.InterpolatedTransformComponent
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.TransformComponent
 
@@ -41,24 +42,28 @@ class PrimitiveRenderSystem(
 
     private fun render(entity: Entity) {
         val transform = TRANSFORM_MAPPER.get(entity)
+        val interpolatedTransform = INTERPOLATED_TRANSFORM_MAPPER.get(entity)
+        val x = interpolatedTransform?.x ?: transform.x
+        val y = interpolatedTransform?.y ?: transform.y
+        val rotationDegrees = interpolatedTransform?.rotationDegrees ?: transform.rotationDegrees
         val primitive = RENDER_MAPPER.get(entity)
         renderer.color(primitive.red, primitive.green, primitive.blue, primitive.alpha)
 
         when (primitive.shape) {
-            PrimitiveShape.CIRCLE -> renderer.circle(transform.x, transform.y, primitive.radius)
+            PrimitiveShape.CIRCLE -> renderer.circle(x, y, primitive.radius)
             PrimitiveShape.RECTANGLE -> renderer.rectangle(
-                transform.x,
-                transform.y,
+                x,
+                y,
                 primitive.width,
                 primitive.height,
-                transform.rotationDegrees,
+                rotationDegrees,
             )
             PrimitiveShape.LINE -> {
-                val cos = MathUtils.cosDeg(transform.rotationDegrees)
-                val sin = MathUtils.sinDeg(transform.rotationDegrees)
-                val endX = transform.x + primitive.lineEndOffsetX * cos - primitive.lineEndOffsetY * sin
-                val endY = transform.y + primitive.lineEndOffsetX * sin + primitive.lineEndOffsetY * cos
-                renderer.line(transform.x, transform.y, endX, endY, primitive.lineWidth)
+                val cos = MathUtils.cosDeg(rotationDegrees)
+                val sin = MathUtils.sinDeg(rotationDegrees)
+                val endX = x + primitive.lineEndOffsetX * cos - primitive.lineEndOffsetY * sin
+                val endY = y + primitive.lineEndOffsetX * sin + primitive.lineEndOffsetY * cos
+                renderer.line(x, y, endX, endY, primitive.lineWidth)
             }
         }
     }
@@ -69,6 +74,8 @@ class PrimitiveRenderSystem(
         const val PRIORITY = 900
         val TRANSFORM_MAPPER: ComponentMapper<TransformComponent> =
             ComponentMapper.getFor(TransformComponent::class.java)
+        val INTERPOLATED_TRANSFORM_MAPPER: ComponentMapper<InterpolatedTransformComponent> =
+            ComponentMapper.getFor(InterpolatedTransformComponent::class.java)
         val RENDER_MAPPER: ComponentMapper<RenderPrimitiveComponent> =
             ComponentMapper.getFor(RenderPrimitiveComponent::class.java)
         val FAMILY: Family = Family.all(
