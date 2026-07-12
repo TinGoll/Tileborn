@@ -41,6 +41,7 @@ class DebugOverlay(
             "FPS: ${snapshot.fps}",
             "Player: $playerPosition",
             "Entities: ${snapshot.entityCount}",
+            "Visible entities: ${snapshot.visibleEntityCount}",
             "Map: ${snapshot.mapId}",
             "Connection: ${snapshot.connectionState.name.lowercase(Locale.US)}",
             "Ping: ${snapshot.pingMillis?.let { "$it ms" } ?: "n/a"}",

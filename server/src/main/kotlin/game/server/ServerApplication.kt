@@ -55,6 +55,7 @@ class ServerApplication(
                 serverWorld.despawnPlayer(playerEntityId)
                 serverWorld.buildSnapshot(loop.serverTick)
             },
+            snapshotForRecipient = serverWorld::filterSnapshotForRecipient,
             logger = logger,
         ).also { it.start() }
 

@@ -29,6 +29,7 @@ class TcpGameServer(
     private val initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
     private val inputCommandHandler: ((Int, InputCommand) -> WorldSnapshot?)? = null,
     private val disconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
+    private val snapshotForRecipient: (Int, WorldSnapshot) -> WorldSnapshot = { _, snapshot -> snapshot },
     private val logger: (String) -> Unit = ::println,
 ) : AutoCloseable {
     private val running = AtomicBoolean(false)
@@ -67,11 +68,11 @@ class TcpGameServer(
         logger("TCP server stopped")
     }
 
-    /** Sends an authoritative full-world snapshot to every connected player. */
+    /** Sends a recipient-filtered authoritative snapshot to every connected player. */
     fun broadcastSnapshot(snapshot: WorldSnapshot, excludedEntityId: Int? = null) {
         sessions.filter { it.entityId != excludedEntityId }.forEach { session ->
             try {
-                session.send(snapshot)
+                session.send(snapshotForRecipient(session.entityId, snapshot))
             } catch (_: Exception) {
                 session.socket.closeQuietly()
             }
@@ -138,10 +139,11 @@ class TcpGameServer(
                     logger("Join accepted for '${message.playerName}' entity=${accepted.playerEntityId}")
                     val initialSnapshot = initialSnapshotProvider?.invoke(accepted.playerEntityId)
                     initialSnapshot?.let { snapshot ->
-                        writer.writeLine(ProtocolCodec.encodeServer(snapshot))
+                        val recipientSnapshot = snapshotForRecipient(accepted.playerEntityId, snapshot)
+                        writer.writeLine(ProtocolCodec.encodeServer(recipientSnapshot))
                         logger(
                             "Initial snapshot sent to '${message.playerName}' " +
-                                "entity=${accepted.playerEntityId} entities=${snapshot.entities.size}",
+                                "entity=${accepted.playerEntityId} entities=${recipientSnapshot.entities.size}",
                         )
                     }
 
@@ -152,7 +154,7 @@ class TcpGameServer(
                     // The joining client already received the initial full snapshot above.
                     initialSnapshot?.let { snapshot ->
                         sessions.filter { it.entityId != accepted.playerEntityId }.forEach { existing ->
-                            existing.send(snapshot)
+                            existing.send(snapshotForRecipient(existing.entityId, snapshot))
                         }
                     }
 
@@ -170,7 +172,7 @@ class TcpGameServer(
                                 inputCommandHandler?.invoke(accepted.playerEntityId, clientMessage)?.let { snapshot ->
                                     // The acknowledgement belongs only to this session; remote clients must not
                                     // discard input based on another player's sequence.
-                                    session.send(snapshot)
+                                    session.send(snapshotForRecipient(session.entityId, snapshot))
                                     broadcastSnapshot(
                                         snapshot.copy(
                                             acknowledgedInputSequence = WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE,

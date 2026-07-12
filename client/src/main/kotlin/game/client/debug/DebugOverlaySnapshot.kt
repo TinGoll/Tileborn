@@ -6,6 +6,7 @@ data class DebugOverlaySnapshot(
     val localPlayerX: Float?,
     val localPlayerY: Float?,
     val entityCount: Int,
+    val visibleEntityCount: Int,
     val mapId: String,
     val connectionState: ConnectionState,
     val pingMillis: Long?,

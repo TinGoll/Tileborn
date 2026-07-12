@@ -16,5 +16,7 @@ class ClientEntityRegistry {
 
     fun serverEntityIds(): Set<Int> = entitiesByServerId.keys.toSet()
 
+    fun size(): Int = entitiesByServerId.size
+
     fun clear(): Collection<Entity> = entitiesByServerId.values.toList().also { entitiesByServerId.clear() }
 }

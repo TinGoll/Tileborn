@@ -81,6 +81,7 @@ class GameScreen(
                     mapIdProvider = { mapData?.mapId },
                     connectionStateProvider = { networkClient.connectionState },
                     pingMillisProvider = { networkClient.pingMillis },
+                    visibleEntityCountProvider = networkEntities::size,
                 ),
             )
             cameraFollowSystem?.update(0f)

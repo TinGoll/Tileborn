@@ -4,6 +4,7 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.component.ServerAuthorityComponent
 import game.server.ecs.ServerEcsWorld
+import game.shared.constants.InterestManagementConstants
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.TransformComponent
@@ -103,9 +104,46 @@ class ServerWorld(
             acknowledgedInputSequence = acknowledgedInputSequence,
         )
 
+    /**
+     * Builds the authoritative snapshot visible to one recipient.
+     *
+     * The recipient is always included so input acknowledgement and local prediction remain valid.
+     */
+    @Synchronized
+    fun buildSnapshotForRecipient(
+        recipientEntityId: Int,
+        serverTick: Long,
+        acknowledgedInputSequence: Long = WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE,
+    ): WorldSnapshot =
+        filterSnapshotForRecipient(
+            recipientEntityId = recipientEntityId,
+            snapshot = buildSnapshot(serverTick, acknowledgedInputSequence),
+        )
+
+    @Synchronized
+    fun filterSnapshotForRecipient(recipientEntityId: Int, snapshot: WorldSnapshot): WorldSnapshot {
+        val recipient = snapshot.entities.firstOrNull { it.entityId == recipientEntityId }
+            ?: return snapshot.copy(entities = emptyList())
+        val radiusSquared = InterestManagementConstants.VISIBILITY_RADIUS_WORLD_UNITS *
+            InterestManagementConstants.VISIBILITY_RADIUS_WORLD_UNITS
+
+        return snapshot.copy(
+            entities = snapshot.entities.filter { candidate ->
+                candidate.entityId == recipientEntityId ||
+                    squaredDistance(recipient, candidate) <= radiusSquared
+            },
+        )
+    }
+
     @Synchronized
     fun acknowledgedInputSequence(serverEntityId: Int): Long =
         lastAcknowledgedInputByEntityId[serverEntityId] ?: WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE
+
+    private fun squaredDistance(first: EntitySnapshot, second: EntitySnapshot): Float {
+        val x = first.x - second.x
+        val y = first.y - second.y
+        return x * x + y * y
+    }
 
     override fun dispose() {
         ecsWorld.dispose()

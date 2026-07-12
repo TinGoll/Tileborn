@@ -37,6 +37,7 @@ class DebugOverlayTest {
                 "FPS: 60",
                 "Player: 12.50, 7.25",
                 "Entities: 2",
+                "Visible entities: 2",
                 "Map: debug_map",
                 "Connection: local",
                 "Ping: 42 ms",
@@ -97,7 +98,8 @@ class DebugOverlayTest {
 
         assertEquals("Player: none", renderer.lastLines[1])
         assertEquals("Entities: 1", renderer.lastLines[2])
-        assertEquals("Ping: n/a", renderer.lastLines[5])
+        assertEquals("Visible entities: 1", renderer.lastLines[3])
+        assertEquals("Ping: n/a", renderer.lastLines[6])
     }
 
     private class RecordingDebugOverlayRenderer : DebugOverlayRenderer {
