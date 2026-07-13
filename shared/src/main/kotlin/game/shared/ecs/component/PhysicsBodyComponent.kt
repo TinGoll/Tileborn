@@ -12,4 +12,6 @@ class PhysicsBodyComponent(
     var previousX: Float = body.position.x,
     var previousY: Float = body.position.y,
     var previousRotationRadians: Float = body.angle,
+    /** False for externally positioned bodies such as client-side remote-player proxies. */
+    var synchronizeVelocityWithBody: Boolean = true,
 ) : Component

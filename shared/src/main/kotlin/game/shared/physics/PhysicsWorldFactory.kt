@@ -18,16 +18,43 @@ object PhysicsWorldFactory {
     }
 
     fun createDynamicPlayerBody(world: World, x: Float, y: Float): Body {
-        return createDynamicCircleBody(world, x, y, GameConstants.PLAYER_COLLISION_RADIUS)
+        return createCircleBody(
+            world = world,
+            x = x,
+            y = y,
+            collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
+            bodyType = BodyDef.BodyType.DynamicBody,
+        )
+    }
+
+    /** Client-side collision proxy for a remote server-authoritative player. */
+    fun createKinematicPlayerBody(world: World, x: Float, y: Float): Body {
+        return createCircleBody(
+            world = world,
+            x = x,
+            y = y,
+            collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
+            bodyType = BodyDef.BodyType.KinematicBody,
+        )
     }
 
     fun createDynamicCircleBody(world: World, x: Float, y: Float, collisionRadius: Float): Body {
+        return createCircleBody(world, x, y, collisionRadius, BodyDef.BodyType.DynamicBody)
+    }
+
+    private fun createCircleBody(
+        world: World,
+        x: Float,
+        y: Float,
+        collisionRadius: Float,
+        bodyType: BodyDef.BodyType,
+    ): Body {
         require(collisionRadius > 0f && collisionRadius.isFinite()) {
             "collisionRadius must be finite and greater than zero, was $collisionRadius"
         }
         val body = world.createBody(
             BodyDef().apply {
-                type = BodyDef.BodyType.DynamicBody
+                type = bodyType
                 position.set(x, y)
                 fixedRotation = true
             },

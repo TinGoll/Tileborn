@@ -73,11 +73,10 @@ class ServerApplication(
             },
             inputCommandHandler = { playerEntityId, inputCommand ->
                 serverWorld.applyInput(playerEntityId, inputCommand)
-                // Input is consumed by the fixed authoritative loop, never by network receive timing.
-                serverWorld.buildSnapshot(
-                    serverTick = loop.serverTick,
-                    acknowledgedInputSequence = serverWorld.acknowledgedInputSequence(playerEntityId),
-                )
+                // Input is consumed by the fixed authoritative loop. Returning no snapshot keeps
+                // outbound state on the fixed 20 Hz broadcast instead of echoing a full world
+                // snapshot for every render-rate input command.
+                null
             },
             interactCommandHandler = { playerEntityId, command ->
                 when (val result = serverWorld.interact(playerEntityId, command)) {

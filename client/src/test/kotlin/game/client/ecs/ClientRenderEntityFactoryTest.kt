@@ -1,6 +1,7 @@
 package game.client.ecs
 
 import com.badlogic.ashley.core.Engine
+import com.badlogic.gdx.physics.box2d.BodyDef
 import game.client.ecs.component.CameraTargetComponent
 import game.client.ecs.component.LocalPlayerComponent
 import game.client.ecs.component.InterpolatedTransformComponent
@@ -20,8 +21,13 @@ import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.NetworkEntityKind
 import game.shared.ecs.component.DefinitionIdComponent
+import game.shared.constants.GameConstants
+import game.shared.ecs.system.PhysicsSimulationSystem
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ClientRenderEntityFactoryTest {
@@ -106,8 +112,10 @@ class ClientRenderEntityFactoryTest {
 
     @Test
     fun `remote player has an interpolated render transform`() {
+        val physicsWorld = PhysicsWorldFactory.create()
         val player = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
             Engine(),
+            physicsWorld,
             EntitySnapshot(
                 entityId = 7,
                 x = 2f,
@@ -125,12 +133,19 @@ class ClientRenderEntityFactoryTest {
         assertNotNull(interpolated)
         assertEquals(2f, interpolated.x, 0f)
         assertEquals(3f, interpolated.y, 0f)
+        val physics = player.getComponent(PhysicsBodyComponent::class.java)
+        assertNotNull(physics)
+        assertEquals(BodyDef.BodyType.KinematicBody, physics.body.type)
+        assertFalse(physics.synchronizeVelocityWithBody)
+        physicsWorld.dispose()
     }
 
     @Test
     fun `remote mob is rendered green and keeps its definition id`() {
+        val physicsWorld = PhysicsWorldFactory.create()
         val mob = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
             Engine(),
+            physicsWorld,
             EntitySnapshot(
                 entityId = -1,
                 x = 3f,
@@ -151,5 +166,53 @@ class ClientRenderEntityFactoryTest {
         assertEquals(0.25f, render.red, 0f)
         assertEquals(0.85f, render.green, 0f)
         assertEquals(0.3f, render.blue, 0f)
+        assertNull(mob.getComponent(PhysicsBodyComponent::class.java))
+        physicsWorld.dispose()
     }
+
+    @Test
+    fun `local player does not pass through remote player collision proxy`() {
+        val engine = Engine()
+        val physicsWorld = PhysicsWorldFactory.create()
+        val physicsSystem = PhysicsSimulationSystem(physicsWorld)
+        try {
+            val local = ClientRenderEntityFactory.createLocalPlayerFromSnapshot(
+                engine,
+                physicsWorld,
+                playerSnapshot(entityId = 1, x = 0f, velocityX = 4f),
+            )
+            val remote = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
+                engine,
+                physicsWorld,
+                playerSnapshot(entityId = 2, x = 2f, velocityX = 0f),
+            )
+            engine.addSystem(physicsSystem)
+
+            repeat(120) { engine.update(GameConstants.PHYSICS_FIXED_TIME_STEP) }
+
+            val localX = local.getComponent(TransformComponent::class.java).x
+            val remoteX = remote.getComponent(PhysicsBodyComponent::class.java).body.position.x
+            assertTrue(
+                "Players overlapped on client: local=$localX, remote=$remoteX",
+                remoteX - localX >= GameConstants.PLAYER_COLLISION_RADIUS * 2f - 0.0001f,
+            )
+        } finally {
+            engine.removeAllEntities()
+            engine.removeSystem(physicsSystem)
+            physicsSystem.dispose()
+            physicsWorld.dispose()
+        }
+    }
+
+    private fun playerSnapshot(entityId: Int, x: Float, velocityX: Float) = EntitySnapshot(
+        entityId = entityId,
+        x = x,
+        y = 0f,
+        velocityX = velocityX,
+        velocityY = 0f,
+        currentHealth = 100f,
+        maxHealth = 100f,
+        movementSpeed = GameConstants.PLAYER_MOVE_SPEED,
+        characterState = CharacterState.ALIVE,
+    )
 }

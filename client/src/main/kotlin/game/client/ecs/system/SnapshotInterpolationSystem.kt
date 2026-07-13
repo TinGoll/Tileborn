@@ -9,6 +9,8 @@ import com.badlogic.ashley.utils.ImmutableArray
 import game.client.ecs.component.InterpolatedTransformComponent
 import game.client.network.SnapshotBuffer
 import game.shared.ecs.component.NetworkIdentityComponent
+import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.ecs.component.TransformComponent
 import game.shared.protocol.EntitySnapshot
 
 /** Advances delayed server time and writes smooth render positions for remote entities only. */
@@ -66,19 +68,29 @@ class SnapshotInterpolationSystem(
             val transform = INTERPOLATED_TRANSFORM_MAPPER.get(entity)
             transform.x = snapshot.x
             transform.y = snapshot.y
+            PHYSICS_MAPPER.get(entity)?.let { physics ->
+                val physicsTransform = TRANSFORM_MAPPER.get(entity)
+                physicsTransform.x = snapshot.x
+                physicsTransform.y = snapshot.y
+                physics.synchronizeTransformToBody = true
+            }
         }
     }
 
     private companion object {
         const val PRIORITY = 150
-        // One server tick (50 ms at the default rate) is enough to interpolate adjacent
-        // snapshots without adding a perceptible delay to nearby players.
-        const val DEFAULT_INTERPOLATION_DELAY_TICKS = 1f
+        // Two server ticks absorb ordinary packet jitter while playback still advances at the
+        // authoritative tick rate. The extra buffered snapshot prevents freeze-and-catch-up motion.
+        const val DEFAULT_INTERPOLATION_DELAY_TICKS = 2f
         const val DEFAULT_SERVER_TICKS_PER_SECOND = 20f
         val IDENTITY_MAPPER: ComponentMapper<NetworkIdentityComponent> =
             ComponentMapper.getFor(NetworkIdentityComponent::class.java)
         val INTERPOLATED_TRANSFORM_MAPPER: ComponentMapper<InterpolatedTransformComponent> =
             ComponentMapper.getFor(InterpolatedTransformComponent::class.java)
+        val PHYSICS_MAPPER: ComponentMapper<PhysicsBodyComponent> =
+            ComponentMapper.getFor(PhysicsBodyComponent::class.java)
+        val TRANSFORM_MAPPER: ComponentMapper<TransformComponent> =
+            ComponentMapper.getFor(TransformComponent::class.java)
         val FAMILY: Family = Family.all(
             NetworkIdentityComponent::class.java,
             InterpolatedTransformComponent::class.java,

@@ -43,7 +43,7 @@ object ClientRenderEntityFactory {
                     red = 0.2f,
                     green = 0.75f,
                     blue = 1f,
-                    radius = 0.4f,
+                    radius = GameConstants.PLAYER_COLLISION_RADIUS,
                 ),
             )
             add(CameraTargetComponent())
@@ -67,18 +67,26 @@ object ClientRenderEntityFactory {
                     red = 0.2f,
                     green = 0.75f,
                     blue = 1f,
-                    radius = 0.4f,
+                    radius = GameConstants.PLAYER_COLLISION_RADIUS,
                 ),
             )
             add(CameraTargetComponent())
         }.also(engine::addEntity)
 
-    fun createRemoteEntityFromSnapshot(engine: Engine, snapshot: EntitySnapshot): Entity =
+    fun createRemoteEntityFromSnapshot(engine: Engine, physicsWorld: World, snapshot: EntitySnapshot): Entity =
         engine.createEntity().apply {
             add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
             add(InterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
+            if (snapshot.entityKind == NetworkEntityKind.PLAYER) {
+                add(
+                    PhysicsBodyComponent(
+                        body = PhysicsWorldFactory.createKinematicPlayerBody(physicsWorld, snapshot.x, snapshot.y),
+                        synchronizeVelocityWithBody = false,
+                    ),
+                )
+            }
             add(HealthComponent(snapshot.currentHealth, snapshot.maxHealth))
             add(MovementSpeedComponent(snapshot.movementSpeed))
             add(CharacterStateComponent(snapshot.characterState))
@@ -89,7 +97,7 @@ object ClientRenderEntityFactory {
                     red = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.25f else 1f,
                     green = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.85f else 0.55f,
                     blue = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.3f else 0.2f,
-                    radius = 0.4f,
+                    radius = GameConstants.PLAYER_COLLISION_RADIUS,
                 ),
             )
         }.also(engine::addEntity)

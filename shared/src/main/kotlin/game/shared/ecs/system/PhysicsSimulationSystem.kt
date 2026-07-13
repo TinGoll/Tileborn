@@ -83,8 +83,10 @@ class PhysicsSimulationSystem(
             physics.previousRotationRadians = transform.rotationDegrees * MathUtils.degreesToRadians
             physics.synchronizeTransformToBody = false
         }
-        val velocity = VELOCITY_MAPPER.get(entity)
-        physics.body.setLinearVelocity(velocity.x, velocity.y)
+        if (physics.synchronizeVelocityWithBody) {
+            val velocity = VELOCITY_MAPPER.get(entity)
+            physics.body.setLinearVelocity(velocity.x, velocity.y)
+        }
     }
 
     private fun synchronizeBodyToEcs(entity: Entity) {
@@ -93,9 +95,11 @@ class PhysicsSimulationSystem(
         transform.x = body.position.x
         transform.y = body.position.y
         transform.rotationDegrees = body.angle * MathUtils.radiansToDegrees
-        val velocity = VELOCITY_MAPPER.get(entity)
-        velocity.x = body.linearVelocity.x
-        velocity.y = body.linearVelocity.y
+        if (BODY_MAPPER.get(entity).synchronizeVelocityWithBody) {
+            val velocity = VELOCITY_MAPPER.get(entity)
+            velocity.x = body.linearVelocity.x
+            velocity.y = body.linearVelocity.y
+        }
     }
 
     override fun dispose() {
