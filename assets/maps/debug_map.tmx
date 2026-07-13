@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="32" tileheight="32" infinite="0" nextlayerid="6" nextobjectid="9">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="12">
  <layer id="1" name="ground" width="10" height="10">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,
@@ -43,6 +43,29 @@
     <property name="targetMap" value="debug_map"/>
     <property name="targetSpawn" value="default"/>
    </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="6" name="mob_spawns">
+  <object id="9" name="slime_north_west" type="mob_spawn" x="96" y="96">
+   <properties>
+    <property name="definitionId" value="slime"/>
+    <property name="spawnId" value="slime_north_west"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="10" name="slime_north_east" type="mob_spawn" x="224" y="96">
+   <properties>
+    <property name="definitionId" value="slime"/>
+    <property name="spawnId" value="slime_north_east"/>
+   </properties>
+   <point/>
+  </object>
+  <object id="11" name="slime_south_east" type="mob_spawn" x="224" y="224">
+   <properties>
+    <property name="definitionId" value="slime"/>
+    <property name="spawnId" value="slime_south_east"/>
+   </properties>
+   <point/>
   </object>
  </objectgroup>
 </map>

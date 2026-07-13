@@ -214,7 +214,7 @@ class GameScreen(
                 )
                 networkEntities.put(entitySnapshot.entityId, created)
             } else if (entity == null) {
-                val created = ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
+                val created = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
                     ecsWorld.engine,
                     entitySnapshot,
                 )

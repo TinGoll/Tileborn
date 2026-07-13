@@ -27,6 +27,8 @@ class ProtocolMessagesTest {
             maxHealth = 100f,
             movementSpeed = 4f,
             characterState = CharacterState.ALIVE,
+            entityKind = NetworkEntityKind.MOB,
+            definitionId = "slime",
         )
         val snapshot = WorldSnapshot(
             serverTick = 42L,
@@ -35,6 +37,7 @@ class ProtocolMessagesTest {
 
         assertEquals(42L, snapshot.serverTick)
         assertEquals(listOf(entity), snapshot.entities)
+        assertEquals(NetworkEntityKind.MOB, snapshot.entities.single().entityKind)
         assertEquals(MessageType.WORLD_SNAPSHOT, snapshot.type)
     }
 
@@ -89,6 +92,8 @@ class ProtocolMessagesTest {
                     maxHealth = 100f,
                     movementSpeed = 4f,
                     characterState = CharacterState.DEAD,
+                    entityKind = NetworkEntityKind.MOB,
+                    definitionId = "slime",
                 ),
             ),
         )

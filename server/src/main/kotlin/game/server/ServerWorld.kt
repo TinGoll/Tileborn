@@ -31,6 +31,7 @@ import game.shared.protocol.GameEvent
 import game.shared.protocol.GameEventType
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.InputCommand
+import game.shared.protocol.NetworkEntityKind
 import game.shared.protocol.WorldSnapshot
 
 /** Authoritative server world state: ECS engine plus gameplay-only map metadata. */
@@ -220,6 +221,7 @@ class ServerWorld(
                     val health = entity.getComponent(HealthComponent::class.java) ?: return@mapNotNull null
                     val movementSpeed = entity.getComponent(MovementSpeedComponent::class.java) ?: return@mapNotNull null
                     val characterState = entity.getComponent(CharacterStateComponent::class.java) ?: return@mapNotNull null
+                    val definitionId = entity.getComponent(DefinitionIdComponent::class.java)?.definitionId
                     EntitySnapshot(
                         entityId = identity.networkEntityId.toInt(),
                         x = transform.x,
@@ -230,6 +232,12 @@ class ServerWorld(
                         maxHealth = health.maxHealth,
                         movementSpeed = movementSpeed.movementSpeed,
                         characterState = characterState.state,
+                        entityKind = if (entity.getComponent(MobComponent::class.java) != null) {
+                            NetworkEntityKind.MOB
+                        } else {
+                            NetworkEntityKind.PLAYER
+                        },
+                        definitionId = definitionId,
                     )
                 },
             acknowledgedInputSequence = acknowledgedInputSequence,

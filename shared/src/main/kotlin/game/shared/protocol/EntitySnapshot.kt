@@ -12,4 +12,12 @@ data class EntitySnapshot(
     val maxHealth: Float,
     val movementSpeed: Float,
     val characterState: CharacterState,
+    val entityKind: NetworkEntityKind = NetworkEntityKind.PLAYER,
+    val definitionId: String? = null,
 )
+
+/** Gameplay identity needed by clients without exposing server-only ECS components. */
+enum class NetworkEntityKind {
+    PLAYER,
+    MOB,
+}

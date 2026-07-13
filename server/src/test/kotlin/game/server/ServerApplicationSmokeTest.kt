@@ -13,6 +13,7 @@ class ServerApplicationSmokeTest {
 
         assertTrue(messages.any { it.contains("Loaded gameplay definitions mobs=1 items=1") })
         assertTrue(messages.any { it.contains("Loaded gameplay map 'debug_map'") })
+        assertTrue(messages.any { it.contains("Spawned map mobs=3") })
         assertTrue(messages.any { it.contains("Server stopped") })
     }
 }

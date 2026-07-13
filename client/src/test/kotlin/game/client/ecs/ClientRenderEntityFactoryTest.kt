@@ -18,6 +18,8 @@ import game.shared.map.GameMapData
 import game.shared.map.MapCollisionObject
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.NetworkEntityKind
+import game.shared.ecs.component.DefinitionIdComponent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -104,7 +106,7 @@ class ClientRenderEntityFactoryTest {
 
     @Test
     fun `remote player has an interpolated render transform`() {
-        val player = ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
+        val player = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
             Engine(),
             EntitySnapshot(
                 entityId = 7,
@@ -123,5 +125,31 @@ class ClientRenderEntityFactoryTest {
         assertNotNull(interpolated)
         assertEquals(2f, interpolated.x, 0f)
         assertEquals(3f, interpolated.y, 0f)
+    }
+
+    @Test
+    fun `remote mob is rendered green and keeps its definition id`() {
+        val mob = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
+            Engine(),
+            EntitySnapshot(
+                entityId = -1,
+                x = 3f,
+                y = 4f,
+                velocityX = 0f,
+                velocityY = 0f,
+                currentHealth = 30f,
+                maxHealth = 30f,
+                movementSpeed = 2f,
+                characterState = CharacterState.ALIVE,
+                entityKind = NetworkEntityKind.MOB,
+                definitionId = "slime",
+            ),
+        )
+
+        val render = mob.getComponent(RenderPrimitiveComponent::class.java)
+        assertEquals("slime", mob.getComponent(DefinitionIdComponent::class.java).definitionId)
+        assertEquals(0.25f, render.red, 0f)
+        assertEquals(0.85f, render.green, 0f)
+        assertEquals(0.3f, render.blue, 0f)
     }
 }

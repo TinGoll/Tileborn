@@ -7,6 +7,7 @@ data class GameMapData(
     val collisionObjects: List<MapCollisionObject>,
     val triggers: List<MapTrigger>,
     val portals: List<MapPortal>,
+    val mobSpawnPoints: List<MapMobSpawnPoint> = emptyList(),
 ) {
     fun requireSpawnPoint(spawnId: String): MapSpawnPoint =
         spawnPoints.firstOrNull { it.spawnId == spawnId }
@@ -37,6 +38,14 @@ fun GameMapData.interactableById(objectId: Int): MapInteractable? =
 
 data class MapSpawnPoint(
     val spawnId: String,
+    val x: Float,
+    val y: Float,
+)
+
+/** Server-owned mob instance configured explicitly in Tiled. */
+data class MapMobSpawnPoint(
+    val spawnId: String,
+    val definitionId: String,
     val x: Float,
     val y: Float,
 )

@@ -9,6 +9,7 @@ import game.shared.definition.MobDefinition
 import game.shared.ecs.component.DefinitionIdComponent
 import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.protocol.NetworkEntityKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThrows
@@ -36,6 +37,9 @@ class ServerMobDefinitionSpawnTest {
                 0f,
             )
             assertNotNull(mob.getComponent(MobComponent::class.java))
+            val snapshot = world.buildSnapshot(serverTick = 1L).entities.single()
+            assertEquals(NetworkEntityKind.MOB, snapshot.entityKind)
+            assertEquals(definition.id, snapshot.definitionId)
         } finally {
             world.dispose()
             application?.exit()

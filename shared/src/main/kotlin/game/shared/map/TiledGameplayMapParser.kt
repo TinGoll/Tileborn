@@ -13,15 +13,29 @@ class TiledGameplayMapParser(
     fun parse(mapId: String, tiledMap: TiledMap): GameMapData {
         val collisionLayer = requireLayer(mapId, tiledMap, COLLISION_LAYER)
         val spawnLayer = requireLayer(mapId, tiledMap, SPAWN_POINTS_LAYER)
+        val mobSpawnLayer = requireLayer(mapId, tiledMap, MOB_SPAWNS_LAYER)
         val triggerLayer = requireLayer(mapId, tiledMap, TRIGGERS_LAYER)
         val portalLayer = requireLayer(mapId, tiledMap, PORTALS_LAYER)
 
         return GameMapData(
             mapId = mapId,
             spawnPoints = spawnLayer.objects.map { parseSpawnPoint(mapId, it) },
+            mobSpawnPoints = mobSpawnLayer.objects.map { parseMobSpawnPoint(mapId, it) },
             collisionObjects = collisionLayer.objects.map { parseCollision(mapId, it) },
             triggers = triggerLayer.objects.map { parseTrigger(mapId, it) },
             portals = portalLayer.objects.map { parsePortal(mapId, it) },
+        )
+    }
+
+    private fun parseMobSpawnPoint(mapId: String, mapObject: MapObject): MapMobSpawnPoint {
+        val context = objectContext(mapId, MOB_SPAWNS_LAYER, mapObject)
+        val point = requirePoint(context, mapObject)
+        val properties = MapCustomProperties(mapObject.properties, context)
+        return MapMobSpawnPoint(
+            spawnId = properties.requireString("spawnId"),
+            definitionId = properties.requireString("definitionId"),
+            x = WorldUnits.pixelsToMeters(point.x),
+            y = WorldUnits.pixelsToMeters(point.y),
         )
     }
 
@@ -107,6 +121,7 @@ class TiledGameplayMapParser(
     companion object {
         const val COLLISION_LAYER = "collision"
         const val SPAWN_POINTS_LAYER = "spawn_points"
+        const val MOB_SPAWNS_LAYER = "mob_spawns"
         const val TRIGGERS_LAYER = "triggers"
         const val PORTALS_LAYER = "portals"
     }

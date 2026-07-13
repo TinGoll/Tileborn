@@ -27,6 +27,25 @@ class TiledGameplayMapParserTest {
     }
 
     @Test
+    fun `mob spawn point includes definition id in world units`() {
+        val map = completeMap()
+        try {
+            map.layers[TiledGameplayMapParser.MOB_SPAWNS_LAYER].objects.add(
+                PointMapObject(96f, 128f).withProperties(
+                    "spawnId" to "slime_1",
+                    "definitionId" to "slime",
+                ),
+            )
+
+            val spawn = TiledGameplayMapParser().parse("test_map", map).mobSpawnPoints.single()
+
+            assertEquals(MapMobSpawnPoint("slime_1", "slime", 3f, 4f), spawn)
+        } finally {
+            map.dispose()
+        }
+    }
+
+    @Test
     fun `collision rectangle is converted from pixels to world units`() {
         val map = completeMap()
         try {
@@ -85,6 +104,7 @@ class TiledGameplayMapParserTest {
     private fun completeMap() = TiledMap().apply {
         layers.add(MapLayer().named(TiledGameplayMapParser.COLLISION_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.SPAWN_POINTS_LAYER))
+        layers.add(MapLayer().named(TiledGameplayMapParser.MOB_SPAWNS_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.TRIGGERS_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.PORTALS_LAYER))
     }

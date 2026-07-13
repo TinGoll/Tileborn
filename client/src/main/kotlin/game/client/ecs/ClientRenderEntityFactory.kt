@@ -10,6 +10,7 @@ import game.client.ecs.component.PhysicsInterpolatedTransformComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.DefinitionIdComponent
 import game.shared.ecs.component.CharacterStateComponent
 import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.MovementSpeedComponent
@@ -20,6 +21,7 @@ import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.NetworkEntityKind
 import game.shared.constants.GameConstants
 
 /** Creates the temporary primitive-rendered entities used by the client MVP. */
@@ -71,7 +73,7 @@ object ClientRenderEntityFactory {
             add(CameraTargetComponent())
         }.also(engine::addEntity)
 
-    fun createRemotePlayerFromSnapshot(engine: Engine, snapshot: EntitySnapshot): Entity =
+    fun createRemoteEntityFromSnapshot(engine: Engine, snapshot: EntitySnapshot): Entity =
         engine.createEntity().apply {
             add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
@@ -80,12 +82,13 @@ object ClientRenderEntityFactory {
             add(HealthComponent(snapshot.currentHealth, snapshot.maxHealth))
             add(MovementSpeedComponent(snapshot.movementSpeed))
             add(CharacterStateComponent(snapshot.characterState))
+            snapshot.definitionId?.let { add(DefinitionIdComponent(it)) }
             add(
                 RenderPrimitiveComponent(
                     shape = PrimitiveShape.CIRCLE,
-                    red = 1f,
-                    green = 0.55f,
-                    blue = 0.2f,
+                    red = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.25f else 1f,
+                    green = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.85f else 0.55f,
+                    blue = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.3f else 0.2f,
                     radius = 0.4f,
                 ),
             )

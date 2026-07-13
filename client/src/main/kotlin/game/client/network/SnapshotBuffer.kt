@@ -58,6 +58,8 @@ class SnapshotBuffer(
             maxHealth = second.maxHealth,
             movementSpeed = second.movementSpeed,
             characterState = second.characterState,
+            entityKind = second.entityKind,
+            definitionId = second.definitionId,
         )
 
     private fun distance(first: EntitySnapshot, second: EntitySnapshot): Float =
