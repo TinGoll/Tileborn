@@ -49,32 +49,41 @@ class ServerReconciliationSystem(
             return
         }
 
+        val unacknowledgedInputs = predictedInputs.entries()
         velocity.x = authoritative.velocityX
         velocity.y = authoritative.velocityY
         PHYSICS_BODY_MAPPER.get(entity)?.let { physics ->
-            val correctionX = authoritative.x - previousX
-            val correctionY = authoritative.y - previousY
+            var replayedX = authoritative.x
+            var replayedY = authoritative.y
+            val movementSpeed = SPEED_MAPPER.get(entity).movementSpeed
+            unacknowledgedInputs.forEach { entry ->
+                replayedX += entry.command.moveX * movementSpeed * entry.deltaTime
+                replayedY += entry.command.moveY * movementSpeed * entry.deltaTime
+            }
+            val correctionX = replayedX - physics.body.position.x
+            val correctionY = replayedY - physics.body.position.y
             val correctionDistance = sqrt(correctionX * correctionX + correctionY * correctionY)
-            // The local Box2D simulation has already applied unacknowledged intent. Replacing it
-            // with every delayed snapshot makes both the player and camera jump at snapshot rate.
-            // Reserve a body teleport for corrections that are large enough to indicate divergence.
-            predictedInputs.entries().lastOrNull()?.command?.let { command ->
-                velocity.x = command.moveX * SPEED_MAPPER.get(entity).movementSpeed
-                velocity.y = command.moveY * SPEED_MAPPER.get(entity).movementSpeed
+            unacknowledgedInputs.lastOrNull()?.command?.let { command ->
+                velocity.x = command.moveX * movementSpeed
+                velocity.y = command.moveY * movementSpeed
             }
             if (correctionDistance >= snapDistance) {
-                transform.x = authoritative.x
-                transform.y = authoritative.y
-                physics.synchronizeTransformToBody = true
+                setPhysicsPosition(physics, transform, replayedX, replayedY)
+                remainingCorrectionX = 0f
+                remainingCorrectionY = 0f
+            } else {
+                // Player-player contacts exist only in the authoritative server world. Keep small
+                // server displacements instead of discarding them, then converge the local body
+                // smoothly so the pushed player cannot remain permanently desynchronized.
+                remainingCorrectionX = correctionX
+                remainingCorrectionY = correctionY
             }
-            remainingCorrectionX = 0f
-            remainingCorrectionY = 0f
             return
         }
 
         transform.x = authoritative.x
         transform.y = authoritative.y
-        predictedInputs.entries().forEach { entry ->
+        unacknowledgedInputs.forEach { entry ->
             ClientPredictionSystem.apply(
                 entry.command,
                 entry.deltaTime,
@@ -102,12 +111,34 @@ class ServerReconciliationSystem(
         val fraction = 1f - exp((-correctionRate * deltaTime.coerceAtLeast(0f)).toDouble()).toFloat()
         val moveX = remainingCorrectionX * fraction
         val moveY = remainingCorrectionY * fraction
-        TRANSFORM_MAPPER.get(entity).let { transform ->
+        val transform = TRANSFORM_MAPPER.get(entity)
+        PHYSICS_BODY_MAPPER.get(entity)?.let { physics ->
+            setPhysicsPosition(
+                physics,
+                transform,
+                physics.body.position.x + moveX,
+                physics.body.position.y + moveY,
+            )
+        } ?: transform.let {
             transform.x += moveX
             transform.y += moveY
         }
         remainingCorrectionX -= moveX
         remainingCorrectionY -= moveY
+    }
+
+    private fun setPhysicsPosition(
+        physics: PhysicsBodyComponent,
+        transform: TransformComponent,
+        x: Float,
+        y: Float,
+    ) {
+        physics.body.setTransform(x, y, physics.body.angle)
+        physics.previousX = x
+        physics.previousY = y
+        transform.x = x
+        transform.y = y
+        physics.synchronizeTransformToBody = false
     }
 
     private companion object {

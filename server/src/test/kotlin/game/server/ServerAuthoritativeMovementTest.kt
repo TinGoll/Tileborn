@@ -51,6 +51,29 @@ class ServerAuthoritativeMovementTest {
     }
 
     @Test
+    fun `input is acknowledged only after authoritative simulation tick`() {
+        val application = ensureHeadlessApplication()
+        val serverWorld = ServerWorld(mapId = "debug_map", mapPath = "maps/debug_map.tmx")
+        try {
+            serverWorld.spawnPlayer(serverEntityId = 1)
+            serverWorld.applyInput(
+                serverEntityId = 1,
+                command = InputCommand(inputSequence = 7L, clientTick = 7L, moveX = 1f, moveY = 0f),
+            )
+
+            assertEquals(WorldSnapshot.NO_ACKNOWLEDGED_INPUT_SEQUENCE, serverWorld.acknowledgedInputSequence(1))
+
+            serverWorld.update(0.05f)
+
+            assertEquals(7L, serverWorld.acknowledgedInputSequence(1))
+            assertEquals(7L, serverWorld.buildSnapshotForRecipient(1, serverTick = 1L).acknowledgedInputSequence)
+        } finally {
+            serverWorld.dispose()
+            application?.exit()
+        }
+    }
+
+    @Test
     fun `server physics prevents a player from crossing a tiled wall`() {
         val application = ensureHeadlessApplication()
         val serverWorld = ServerWorld(mapId = "debug_map", mapPath = "maps/debug_map.tmx")

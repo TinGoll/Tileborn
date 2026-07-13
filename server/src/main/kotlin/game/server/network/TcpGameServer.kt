@@ -3,6 +3,7 @@ package game.server.network
 import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
+import game.shared.protocol.NicknameRules
 import game.shared.protocol.InputCommand
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.GameEvent
@@ -160,25 +161,22 @@ class TcpGameServer(
                         return
                     }
 
+                    val playerName = NicknameRules.normalize(message.playerName)
+                    NicknameRules.validationError(playerName)?.let { reason ->
+                        sendRejected(writer, reason)
+                        logger("Join rejected from ${socket.remoteSocketAddress}: invalid nickname")
+                        return
+                    }
+
                     expireDisconnectedSessions()
 
-                    val resumedSession = resumeOrCreateSession(message)
-                    val retainedSession = resumedSession.session
-                    resumedSession.supersededConnection?.socket.closeQuietly()
-                    resumedSession.supersededEntityId?.let { entityId ->
-                        logger("Session replaced for '${message.playerName}' oldEntity=$entityId")
-                        // The current account identity is the player name. A new login without a
-                        // valid reconnect token must not leave its old authoritative entity in the
-                        // world during the reconnect grace period.
-                        sessionDisconnectedHandler?.invoke(entityId)
-                        disconnectSnapshotProvider?.invoke(entityId)?.let(::broadcastSnapshot)
-                    }
+                    val retainedSession = resumeOrCreateSession(message, playerName)
                     val isReconnect = retainedSession.wasDisconnected
                     sessionEstablishedHandler?.invoke(
                         EstablishedSession(
                             entityId = retainedSession.entityId,
                             sessionToken = retainedSession.token,
-                            playerName = message.playerName,
+                            playerName = retainedSession.playerName,
                             isReconnect = isReconnect,
                         ),
                     )
@@ -189,7 +187,7 @@ class TcpGameServer(
                         sessionToken = retainedSession.token,
                     )
                     writer.writeLine(ProtocolCodec.encodeServer(accepted))
-                    logger("${if (isReconnect) "Reconnect" else "Join"} accepted for '${message.playerName}' entity=${accepted.playerEntityId}")
+                    logger("${if (isReconnect) "Reconnect" else "Join"} accepted for '${retainedSession.playerName}' entity=${accepted.playerEntityId}")
                     val initialSnapshot = if (isReconnect) {
                         reconnectSnapshotProvider?.invoke(accepted.playerEntityId)
                     } else {
@@ -199,7 +197,7 @@ class TcpGameServer(
                         val recipientSnapshot = snapshotForRecipient(accepted.playerEntityId, snapshot)
                         writer.writeLine(ProtocolCodec.encodeServer(recipientSnapshot))
                         logger(
-                            "Initial snapshot sent to '${message.playerName}' " +
+                            "Initial snapshot sent to '${retainedSession.playerName}' " +
                                 "entity=${accepted.playerEntityId} entities=${recipientSnapshot.entities.size}",
                         )
                     }
@@ -274,7 +272,7 @@ class TcpGameServer(
         }
     }
 
-    private fun resumeOrCreateSession(request: JoinRequest): ResumedSession = synchronized(sessionLock) {
+    private fun resumeOrCreateSession(request: JoinRequest, playerName: String): RetainedSession = synchronized(sessionLock) {
         val requested = request.sessionToken?.let(retainedSessionsByToken::get)
         val now = clockMillis()
         if (
@@ -283,22 +281,14 @@ class TcpGameServer(
         ) {
             requested.wasDisconnected = requested.activeConnection != null || requested.disconnectedAtMillis != null
             requested.disconnectedAtMillis = null
-            return@synchronized ResumedSession(session = requested)
+            return@synchronized requested
         }
-        val replaced = retainedSessionsByToken.values.firstOrNull { session ->
-            session.playerName == request.playerName
-        }
-        replaced?.let { retainedSessionsByToken.remove(it.token) }
-        val newSession = RetainedSession(
+
+        RetainedSession(
             token = UUID.randomUUID().toString(),
             entityId = nextEntityId.getAndIncrement(),
-            playerName = request.playerName,
+            playerName = playerName,
         ).also { retainedSessionsByToken[it.token] = it }
-        ResumedSession(
-            session = newSession,
-            supersededEntityId = replaced?.entityId,
-            supersededConnection = replaced?.activeConnection,
-        )
     }
 
     private fun markDisconnected(session: ClientSession): Boolean =
@@ -368,12 +358,6 @@ class TcpGameServer(
         var disconnectedAtMillis: Long? = null,
         var activeConnection: ClientSession? = null,
         var wasDisconnected: Boolean = false,
-    )
-
-    private data class ResumedSession(
-        val session: RetainedSession,
-        val supersededEntityId: Int? = null,
-        val supersededConnection: ClientSession? = null,
     )
 
     private companion object {

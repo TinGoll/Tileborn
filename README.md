@@ -30,7 +30,9 @@ clients, Tiled/Box2D wall collision, local prediction, remote interpolation, rec
 and the F3 debug overlay (FPS, ping, server tick, position, and entity counts).
 
 Start the server with `gradlew.bat :server:run`, then start the desktop client with
-`gradlew.bat :desktop:run`. The desktop client uses `127.0.0.1:54555` by default.
+`gradlew.bat :desktop:run`. The desktop client uses `127.0.0.1:54555` by default and
+asks for a nickname before connecting. Nicknames are display names rather than account
+identifiers, so multiple local test clients may use the same nickname safely.
 
 The Android build defaults to `10.0.2.2:54555`, which reaches the host machine from an
 Android Emulator. For a physical device, build with a reachable server address:

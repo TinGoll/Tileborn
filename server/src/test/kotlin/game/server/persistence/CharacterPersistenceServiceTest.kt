@@ -1,6 +1,7 @@
 package game.server.persistence
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -28,18 +29,35 @@ class CharacterPersistenceServiceTest {
     }
 
     @Test
-    fun `saved position is restored for a later join`() {
+    fun `saved position is restored when the same session reconnects`() {
         val characters = InMemoryCharacterRepository()
         val sessions = InMemorySessionRepository()
         val service = CharacterPersistenceService(characters, sessions) { CharacterId("character-1") }
-        val initial = service.restoreForJoin(1, "old-token", "Ada", "debug_map", 1f, 2f)
+        val initial = service.restoreForJoin(1, "same-token", "Ada", "debug_map", 1f, 2f)
         service.saveOnDisconnect(1, "debug_map", 15f, 20f)
 
-        val restored = service.restoreForJoin(2, "new-token", "Ada", "debug_map", 1f, 2f)
+        val restored = service.restoreForJoin(2, "same-token", "Ada", "debug_map", 1f, 2f)
 
         assertEquals(initial.characterId, restored.characterId)
         assertEquals(15f, restored.positionX, 0f)
         assertEquals(20f, restored.positionY, 0f)
+    }
+
+    @Test
+    fun `same nickname with a new session creates a different guest character`() {
+        val characters = InMemoryCharacterRepository()
+        val sessions = InMemorySessionRepository()
+        val characterIds = ArrayDeque(listOf(CharacterId("character-1"), CharacterId("character-2")))
+        val service = CharacterPersistenceService(characters, sessions) { characterIds.removeFirst() }
+        val first = service.restoreForJoin(1, "first-token", "Ada", "debug_map", 1f, 2f)
+        service.saveOnDisconnect(1, "debug_map", 15f, 20f)
+
+        val second = service.restoreForJoin(2, "second-token", "Ada", "debug_map", 1f, 2f)
+
+        assertNotEquals(first.characterId, second.characterId)
+        assertNotEquals(first.accountId, second.accountId)
+        assertEquals(1f, second.positionX, 0f)
+        assertEquals(2f, second.positionY, 0f)
     }
 
     @Test

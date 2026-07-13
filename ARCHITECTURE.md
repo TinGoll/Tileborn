@@ -611,10 +611,15 @@ Connection flow:
 
 ```text id="bqi8ii"
 client connects
-client sends JoinRequest with protocol version
-server validates version
+client sends JoinRequest with protocol version, nickname, and optional reconnect token
+server validates version and nickname
+server resumes only the session identified by a valid reconnect token
+server creates a new guest session when no valid token is present
 server accepts or rejects
 ```
+
+Nickname is presentation data, not authentication or session identity. Matching nicknames
+must never replace an active connection or grant access to another character's persisted state.
 
 Protocol changes that break compatibility must update the protocol version.
 
@@ -784,7 +789,7 @@ client disconnects
 server keeps session for short timeout
 client reconnects with token
 server restores session if possible
-otherwise loads saved character state
+otherwise creates a new guest session
 ```
 
 Recommended timeout:

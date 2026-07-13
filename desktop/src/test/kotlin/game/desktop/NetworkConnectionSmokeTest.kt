@@ -19,8 +19,6 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.Socket
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -68,6 +66,23 @@ class NetworkConnectionSmokeTest {
             assertTrue(waitUntil { client.connectionState == ConnectionState.REJECTED })
             val rejected = client.lastServerMessage as JoinRejected
             assertTrue(rejected.reason.contains("Unsupported protocol version"))
+            client.close()
+        }
+    }
+
+    @Test
+    fun `invalid nickname receives JoinRejected`() {
+        runningServer().use { server ->
+            val client = TcpGameClient(
+                port = server.localPort,
+                joinRequestFactory = { JoinRequest(playerName = "!") },
+            )
+
+            client.connect()
+
+            assertTrue(waitUntil { client.connectionState == ConnectionState.REJECTED })
+            val rejected = client.lastServerMessage as JoinRejected
+            assertTrue(rejected.reason.contains("Nickname"))
             client.close()
         }
     }
@@ -208,10 +223,9 @@ class NetworkConnectionSmokeTest {
     }
 
     @Test
-    fun `new login replaces retained entity for the same player`() {
+    fun `two active clients with the same nickname keep separate sessions`() {
         val entities = linkedMapOf<Int, Float>()
         val lock = Any()
-        val disconnected = CountDownLatch(1)
         fun snapshot() = synchronized(lock) {
             WorldSnapshot(
                 serverTick = 42L,
@@ -225,7 +239,6 @@ class NetworkConnectionSmokeTest {
             serverTickProvider = { 42L },
             initialSnapshotProvider = { id -> synchronized(lock) { entities[id] = 5f }; snapshot() },
             disconnectSnapshotProvider = { id -> synchronized(lock) { entities.remove(id) }; snapshot() },
-            sessionDisconnectedHandler = { disconnected.countDown() },
             logger = {},
         ).use { server ->
             server.start()
@@ -234,18 +247,13 @@ class NetworkConnectionSmokeTest {
             try {
                 first.connect()
                 assertTrue(waitUntil { first.connectionState == ConnectionState.CONNECTED })
-                val oldEntityId = first.localPlayerEntityId
-                first.close()
-                assertTrue(disconnected.await(1, TimeUnit.SECONDS))
-
                 second.connect()
                 assertTrue(waitUntil { second.connectionState == ConnectionState.CONNECTED })
-                assertTrue(waitUntil {
-                    (second.lastServerMessage as? WorldSnapshot)?.entities?.let { snapshots ->
-                        snapshots.size == 1 && snapshots.single().entityId == second.localPlayerEntityId &&
-                            snapshots.none { it.entityId == oldEntityId }
-                    } == true
-                })
+
+                assertTrue(first.localPlayerEntityId != second.localPlayerEntityId)
+                assertTrue(waitUntil { first.connectionState == ConnectionState.CONNECTED })
+                assertTrue(waitUntil { first.lastServerMessage.hasEntityIds(1, 2) })
+                assertTrue(waitUntil { second.lastServerMessage.hasEntityIds(1, 2) })
             } finally {
                 first.close()
                 second.close()

@@ -11,6 +11,7 @@ import game.client.assets.AssetDescriptors
 import game.client.assets.GameAssetManager
 import game.client.debug.DebugOverlay
 import game.client.debug.DebugOverlaySnapshotBuilder
+import game.client.debug.ConnectionState
 import game.client.ecs.ClientEcsWorld
 import game.client.ecs.ClientEntityRegistry
 import game.client.ecs.ClientRenderEntityFactory
@@ -68,7 +69,7 @@ class GameScreen(
 
     override fun show() {
         if (mapRenderer == null) {
-            networkClient.connect()
+            if (networkClient.connectionState == ConnectionState.DISCONNECTED) networkClient.connect()
             val tiledMap = assets.get(AssetDescriptors.DEBUG_MAP)
             mapData = TiledGameplayMapParser { message ->
                 Gdx.app?.error("GameScreen", message)

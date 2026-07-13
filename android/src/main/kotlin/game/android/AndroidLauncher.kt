@@ -15,7 +15,13 @@ class AndroidLauncher : AndroidApplication() {
         initialize(
             Main(
                 inputSource = TouchInputSource(),
-                networkClient = TcpGameClient(host = BuildConfig.SERVER_HOST, port = BuildConfig.SERVER_PORT),
+                networkClientFactory = { nickname ->
+                    TcpGameClient(
+                        host = BuildConfig.SERVER_HOST,
+                        port = BuildConfig.SERVER_PORT,
+                        playerName = nickname,
+                    )
+                },
             ),
             AndroidApplicationConfiguration().apply {
             // Configure your application here.

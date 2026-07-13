@@ -23,14 +23,14 @@ class CharacterPersistenceService(
         defaultPositionX: Float,
         defaultPositionY: Float,
     ): SavedCharacterState {
-        val accountId = AccountId(nickname)
         val characterId = sessionRepository.findCharacterId(sessionToken)
-            ?: characterRepository.findByAccountId(accountId)?.characterId
             ?: characterIdFactory()
         sessionRepository.bind(sessionToken, characterId)
 
         return (characterRepository.load(characterId) ?: SavedCharacterState(
-            accountId = accountId,
+            // Until authentication exists, a new server session owns a new guest identity.
+            // A display nickname must never grant access to another character's saved state.
+            accountId = AccountId("guest:${characterId.value}"),
             characterId = characterId,
             mapId = defaultMapId,
             positionX = defaultPositionX,

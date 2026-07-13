@@ -63,18 +63,44 @@ class ServerReconciliationSystemTest {
     }
 
     @Test
-    fun `small physics correction preserves locally predicted body position`() {
+    fun `small server displacement smoothly corrects local physics body`() {
         val world = PhysicsWorldFactory.create()
         try {
             val entity = localEntity(x = 1f).apply {
                 add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(world, 1f, 0f), false))
             }
-            val system = ServerReconciliationSystem(PredictedInputBuffer(), snapDistance = 1.5f)
+            val system = ServerReconciliationSystem(
+                PredictedInputBuffer(),
+                snapDistance = 1.5f,
+                correctionRate = 1000f,
+            )
+            val engine = Engine().apply { addEntity(entity); addSystem(system) }
 
             system.reconcile(entity, snapshot(x = 0.8f), acknowledgedSequence = 0)
+            engine.update(0.1f)
 
-            assertEquals(1f, entity.getComponent(TransformComponent::class.java).x, 0f)
+            assertEquals(0.8f, entity.getComponent(TransformComponent::class.java).x, 0.001f)
+            assertEquals(0.8f, entity.getComponent(PhysicsBodyComponent::class.java).body.position.x, 0.001f)
             assertTrue(!entity.getComponent(PhysicsBodyComponent::class.java).synchronizeTransformToBody)
+        } finally {
+            world.dispose()
+        }
+    }
+
+    @Test
+    fun `physics correction replays unacknowledged input from authoritative position`() {
+        val world = PhysicsWorldFactory.create()
+        try {
+            val buffer = PredictedInputBuffer().apply { add(command(2), 0.1f) }
+            val entity = localEntity(x = 0.6f).apply {
+                add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(world, 0.6f, 0f), false))
+            }
+            val system = ServerReconciliationSystem(buffer, snapDistance = 0.5f)
+
+            system.reconcile(entity, snapshot(x = 0.2f), acknowledgedSequence = 1)
+
+            assertEquals(0.6f, entity.getComponent(PhysicsBodyComponent::class.java).body.position.x, 0.001f)
+            assertEquals(listOf(2L), buffer.entries().map { it.command.inputSequence })
         } finally {
             world.dispose()
         }
