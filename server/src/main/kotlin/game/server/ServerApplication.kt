@@ -9,15 +9,23 @@ import game.server.persistence.CharacterRepository
 import game.server.persistence.InMemoryCharacterRepository
 import game.server.persistence.InMemorySessionRepository
 import game.server.persistence.SessionRepository
-import game.shared.protocol.NetworkDefaults
+import game.shared.definition.DefinitionLoader
+import game.shared.definition.DefinitionRegistry
 import game.shared.protocol.InteractCommand
+import game.shared.protocol.NetworkDefaults
 
 /** Coordinates authoritative server startup, fixed-tick execution, and shutdown. */
 class ServerApplication(
     private val mapId: String = DEFAULT_MAP_ID,
     private val mapPath: String = DEFAULT_MAP_PATH,
     private val networkPort: Int = NetworkDefaults.PORT,
-    private val worldFactory: (String, String) -> ServerWorld = ::ServerWorld,
+    private val worldFactory: (String, String, DefinitionRegistry) -> ServerWorld = ::ServerWorld,
+    private val definitionLoader: () -> DefinitionRegistry = {
+        DefinitionLoader().load(
+            Gdx.files.internal(DEFAULT_MOBS_PATH),
+            Gdx.files.internal(DEFAULT_ITEMS_PATH),
+        )
+    },
     logTicks: Boolean = false,
     private val loop: ServerGameLoop = ServerGameLoop(logTicks = logTicks),
     private val consoleFactory: ((() -> Unit, (String) -> Unit) -> ServerConsole)? = { onStopRequested, consoleLogger ->
@@ -37,7 +45,9 @@ class ServerApplication(
         ensureHeadlessApplication()
         stopped = false
         logger("Server starting at ${ServerGameLoop.DEFAULT_TICK_RATE} ticks/sec")
-        val serverWorld = worldFactory(mapId, mapPath)
+        val definitions = definitionLoader()
+        logger("Loaded gameplay definitions mobs=${definitions.mobCount} items=${definitions.itemCount}")
+        val serverWorld = worldFactory(mapId, mapPath, definitions)
         world = serverWorld
         logger(
             "Loaded gameplay map '${serverWorld.gameMapData.mapId}' " +
@@ -140,5 +150,7 @@ class ServerApplication(
     private companion object {
         const val DEFAULT_MAP_ID = "debug_map"
         const val DEFAULT_MAP_PATH = "maps/debug_map.tmx"
+        const val DEFAULT_MOBS_PATH = "definitions/mobs.json"
+        const val DEFAULT_ITEMS_PATH = "definitions/items.json"
     }
 }

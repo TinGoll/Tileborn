@@ -1,0 +1,8 @@
+[
+  {
+    "id": "slime_gel",
+    "displayName": "Slime Gel",
+    "type": "MATERIAL",
+    "maxStackSize": 99
+  }
+]

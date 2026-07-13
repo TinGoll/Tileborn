@@ -18,6 +18,13 @@ object PhysicsWorldFactory {
     }
 
     fun createDynamicPlayerBody(world: World, x: Float, y: Float): Body {
+        return createDynamicCircleBody(world, x, y, GameConstants.PLAYER_COLLISION_RADIUS)
+    }
+
+    fun createDynamicCircleBody(world: World, x: Float, y: Float, collisionRadius: Float): Body {
+        require(collisionRadius > 0f && collisionRadius.isFinite()) {
+            "collisionRadius must be finite and greater than zero, was $collisionRadius"
+        }
         val body = world.createBody(
             BodyDef().apply {
                 type = BodyDef.BodyType.DynamicBody
@@ -27,7 +34,7 @@ object PhysicsWorldFactory {
         )
         val shape = CircleShape()
         try {
-            shape.radius = GameConstants.PLAYER_COLLISION_RADIUS
+            shape.radius = collisionRadius
             body.createFixture(
                 FixtureDef().apply {
                     this.shape = shape

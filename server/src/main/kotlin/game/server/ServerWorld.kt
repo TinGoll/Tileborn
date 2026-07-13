@@ -2,10 +2,14 @@ package game.server
 
 import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.utils.Disposable
-import game.server.ecs.component.ServerAuthorityComponent
 import game.server.ecs.ServerEcsWorld
+import game.server.ecs.component.MobComponent
+import game.server.ecs.component.ServerAuthorityComponent
 import game.server.persistence.SavedCharacterState
 import game.shared.constants.InterestManagementConstants
+import game.shared.definition.DefinitionRegistry
+import game.shared.ecs.component.DefinitionIdComponent
+import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.PlayerInputComponent
@@ -13,8 +17,8 @@ import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.input.InputCommandValidator
 import game.shared.map.GameMapData
-import game.shared.map.TiledGameplayMapParser
 import game.shared.map.MapInteractableType
+import game.shared.map.TiledGameplayMapParser
 import game.shared.map.interactableById
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.physics.TiledCollisionLoader
@@ -29,6 +33,7 @@ import game.shared.protocol.WorldSnapshot
 class ServerWorld(
     mapId: String,
     mapPath: String,
+    val definitionRegistry: DefinitionRegistry = DefinitionRegistry.empty(),
     private val ecsWorld: ServerEcsWorld = ServerEcsWorld(),
 ) : Disposable {
     val gameMapData: GameMapData
@@ -66,6 +71,31 @@ class ServerWorld(
                 add(PlayerInputComponent())
                 add(VelocityComponent())
                 add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(ecsWorld.physicsWorld, position.first, position.second)))
+                add(ServerAuthorityComponent())
+            }.also(engine::addEntity)
+        }
+
+    /** Creates a mob instance from validated static data; components hold runtime state only. */
+    @Synchronized
+    fun spawnMob(serverEntityId: Int, definitionId: String, x: Float, y: Float) =
+        definitionRegistry.requireMob(definitionId).let { definition ->
+            engine.createEntity().apply {
+                add(TransformComponent(x = x, y = y))
+                add(NetworkIdentityComponent(networkEntityId = serverEntityId.toLong()))
+                add(DefinitionIdComponent(definitionId))
+                add(HealthComponent(currentHealth = definition.maxHealth))
+                add(VelocityComponent())
+                add(
+                    PhysicsBodyComponent(
+                        PhysicsWorldFactory.createDynamicCircleBody(
+                            ecsWorld.physicsWorld,
+                            x,
+                            y,
+                            definition.collisionRadius,
+                        ),
+                    ),
+                )
+                add(MobComponent())
                 add(ServerAuthorityComponent())
             }.also(engine::addEntity)
         }

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "slime",
+    "displayName": "Slime",
+    "maxHealth": 30.0,
+    "movementSpeed": 2.0,
+    "collisionRadius": 0.35,
+    "aggroRadius": 6.0,
+    "attackRadius": 0.8,
+    "attackDamage": 5.0,
+    "attackCooldown": 1.25
+  }
+]

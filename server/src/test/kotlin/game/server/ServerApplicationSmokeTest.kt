@@ -11,6 +11,7 @@ class ServerApplicationSmokeTest {
 
         application.run(maxTicks = 1)
 
+        assertTrue(messages.any { it.contains("Loaded gameplay definitions mobs=1 items=1") })
         assertTrue(messages.any { it.contains("Loaded gameplay map 'debug_map'") })
         assertTrue(messages.any { it.contains("Server stopped") })
     }
