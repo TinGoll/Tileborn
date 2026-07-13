@@ -54,6 +54,10 @@ class SnapshotBuffer(
             y = lerp(first.y, second.y, progress),
             velocityX = lerp(first.velocityX, second.velocityX, progress),
             velocityY = lerp(first.velocityY, second.velocityY, progress),
+            currentHealth = second.currentHealth,
+            maxHealth = second.maxHealth,
+            movementSpeed = second.movementSpeed,
+            characterState = second.characterState,
         )
 
     private fun distance(first: EntitySnapshot, second: EntitySnapshot): Float =

@@ -14,6 +14,7 @@ import game.client.debug.DebugOverlaySnapshotBuilder
 import game.client.ecs.ClientEcsWorld
 import game.client.ecs.ClientEntityRegistry
 import game.client.ecs.ClientRenderEntityFactory
+import game.client.ecs.CharacterSnapshotApplier
 import game.client.ecs.system.CameraFollowSystem
 import game.client.ecs.system.MapRenderSystem
 import game.client.ecs.system.PrimitiveRenderSystem
@@ -220,6 +221,7 @@ class GameScreen(
                 networkEntities.put(entitySnapshot.entityId, created)
                 ecsWorld.snapshotInterpolationSystem.recordSnapshot(snapshot.serverTick, entitySnapshot)
             } else if (entity != null) {
+                CharacterSnapshotApplier.apply(entity, entitySnapshot)
                 if (entitySnapshot.entityId == localPlayerId) {
                     applySnapshotToEntity(entity, entitySnapshot, snapshot.acknowledgedInputSequence)
                 } else {

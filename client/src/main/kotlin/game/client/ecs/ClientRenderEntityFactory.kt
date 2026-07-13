@@ -10,6 +10,9 @@ import game.client.ecs.component.PhysicsInterpolatedTransformComponent
 import game.client.ecs.component.PrimitiveShape
 import game.client.ecs.component.RenderPrimitiveComponent
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.HealthComponent
+import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.TransformComponent
@@ -17,6 +20,7 @@ import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
+import game.shared.constants.GameConstants
 
 /** Creates the temporary primitive-rendered entities used by the client MVP. */
 object ClientRenderEntityFactory {
@@ -27,6 +31,9 @@ object ClientRenderEntityFactory {
             add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, x, y)))
             add(PhysicsInterpolatedTransformComponent(x = x, y = y))
             add(PlayerInputComponent())
+            add(HealthComponent(GameConstants.PLAYER_MAX_HEALTH, GameConstants.PLAYER_MAX_HEALTH))
+            add(MovementSpeedComponent(GameConstants.PLAYER_MOVE_SPEED))
+            add(CharacterStateComponent())
             add(LocalPlayerComponent())
             add(
                 RenderPrimitiveComponent(
@@ -48,6 +55,9 @@ object ClientRenderEntityFactory {
             add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, snapshot.x, snapshot.y)))
             add(PhysicsInterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(PlayerInputComponent())
+            add(HealthComponent(snapshot.currentHealth, snapshot.maxHealth))
+            add(MovementSpeedComponent(snapshot.movementSpeed))
+            add(CharacterStateComponent(snapshot.characterState))
             add(LocalPlayerComponent())
             add(
                 RenderPrimitiveComponent(
@@ -67,6 +77,9 @@ object ClientRenderEntityFactory {
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
             add(InterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
+            add(HealthComponent(snapshot.currentHealth, snapshot.maxHealth))
+            add(MovementSpeedComponent(snapshot.movementSpeed))
+            add(CharacterStateComponent(snapshot.characterState))
             add(
                 RenderPrimitiveComponent(
                     shape = PrimitiveShape.CIRCLE,

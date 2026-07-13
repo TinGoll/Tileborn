@@ -29,6 +29,7 @@ class ServerMobDefinitionSpawnTest {
 
             assertEquals(definition.id, mob.getComponent(DefinitionIdComponent::class.java).definitionId)
             assertEquals(definition.maxHealth, mob.getComponent(HealthComponent::class.java).currentHealth, 0f)
+            assertEquals(definition.maxHealth, mob.getComponent(HealthComponent::class.java).maxHealth, 0f)
             assertEquals(
                 definition.collisionRadius,
                 mob.getComponent(PhysicsBodyComponent::class.java).body.fixtureList.single().shape.radius,

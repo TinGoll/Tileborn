@@ -6,10 +6,14 @@ import game.server.ecs.ServerEcsWorld
 import game.server.ecs.component.MobComponent
 import game.server.ecs.component.ServerAuthorityComponent
 import game.server.persistence.SavedCharacterState
+import game.shared.constants.GameConstants
 import game.shared.constants.InterestManagementConstants
 import game.shared.definition.DefinitionRegistry
 import game.shared.ecs.component.DefinitionIdComponent
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
 import game.shared.ecs.component.HealthComponent
+import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.PlayerInputComponent
@@ -70,6 +74,9 @@ class ServerWorld(
                 add(NetworkIdentityComponent(networkEntityId = serverEntityId.toLong()))
                 add(PlayerInputComponent())
                 add(VelocityComponent())
+                add(HealthComponent(GameConstants.PLAYER_MAX_HEALTH, GameConstants.PLAYER_MAX_HEALTH))
+                add(MovementSpeedComponent(GameConstants.PLAYER_MOVE_SPEED))
+                add(CharacterStateComponent())
                 add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(ecsWorld.physicsWorld, position.first, position.second)))
                 add(ServerAuthorityComponent())
             }.also(engine::addEntity)
@@ -83,7 +90,9 @@ class ServerWorld(
                 add(TransformComponent(x = x, y = y))
                 add(NetworkIdentityComponent(networkEntityId = serverEntityId.toLong()))
                 add(DefinitionIdComponent(definitionId))
-                add(HealthComponent(currentHealth = definition.maxHealth))
+                add(HealthComponent(currentHealth = definition.maxHealth, maxHealth = definition.maxHealth))
+                add(MovementSpeedComponent(definition.movementSpeed))
+                add(CharacterStateComponent())
                 add(VelocityComponent())
                 add(
                     PhysicsBodyComponent(
@@ -125,6 +134,14 @@ class ServerWorld(
             entity.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
         } ?: return false
         val input = entity.getComponent(PlayerInputComponent::class.java) ?: return false
+        if (entity.getComponent(CharacterStateComponent::class.java)?.state != CharacterState.ALIVE) {
+            input.state.moveX = 0f
+            input.state.moveY = 0f
+            input.state.attack = false
+            input.state.interact = false
+            lastAcknowledgedInputByEntityId[serverEntityId] = command.inputSequence
+            return false
+        }
         val validated = InputCommandValidator.toInputState(command)
         input.state.moveX = validated.moveX
         input.state.moveY = validated.moveY
@@ -133,6 +150,18 @@ class ServerWorld(
         input.state.aimX = validated.aimX
         input.state.aimY = validated.aimY
         lastAcknowledgedInputByEntityId[serverEntityId] = command.inputSequence
+        return true
+    }
+
+    /** Applies damage to a server-owned entity and immediately synchronizes its lifecycle state. */
+    @Synchronized
+    fun applyDamage(serverEntityId: Int, amount: Float): Boolean {
+        val entity = engine.entities.firstOrNull { candidate ->
+            candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
+        } ?: return false
+        if (entity.getComponent(HealthComponent::class.java) == null) return false
+        ecsWorld.healthSystem.applyDamage(entity, amount)
+        ecsWorld.characterStateSystem.synchronizeState(entity)
         return true
     }
 
@@ -188,12 +217,19 @@ class ServerWorld(
                     val identity = entity.getComponent(NetworkIdentityComponent::class.java) ?: return@mapNotNull null
                     val transform = entity.getComponent(TransformComponent::class.java) ?: return@mapNotNull null
                     val velocity = entity.getComponent(VelocityComponent::class.java)
+                    val health = entity.getComponent(HealthComponent::class.java) ?: return@mapNotNull null
+                    val movementSpeed = entity.getComponent(MovementSpeedComponent::class.java) ?: return@mapNotNull null
+                    val characterState = entity.getComponent(CharacterStateComponent::class.java) ?: return@mapNotNull null
                     EntitySnapshot(
                         entityId = identity.networkEntityId.toInt(),
                         x = transform.x,
                         y = transform.y,
                         velocityX = velocity?.x ?: 0f,
                         velocityY = velocity?.y ?: 0f,
+                        currentHealth = health.currentHealth,
+                        maxHealth = health.maxHealth,
+                        movementSpeed = movementSpeed.movementSpeed,
+                        characterState = characterState.state,
                     )
                 },
             acknowledgedInputSequence = acknowledgedInputSequence,

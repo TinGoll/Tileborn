@@ -7,6 +7,10 @@ import game.client.network.PredictedInputBuffer
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.constants.GameConstants
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.InputCommand
@@ -80,6 +84,8 @@ class ServerReconciliationSystemTest {
         add(LocalPlayerComponent())
         add(TransformComponent(x = x))
         add(VelocityComponent())
+        add(MovementSpeedComponent(GameConstants.PLAYER_MOVE_SPEED))
+        add(CharacterStateComponent())
     }
 
     private fun command(sequence: Long) = InputCommand(
@@ -89,5 +95,15 @@ class ServerReconciliationSystemTest {
         moveY = 0f,
     )
 
-    private fun snapshot(x: Float) = EntitySnapshot(1, x, 0f, 0f, 0f)
+    private fun snapshot(x: Float) = EntitySnapshot(
+        entityId = 1,
+        x = x,
+        y = 0f,
+        velocityX = 0f,
+        velocityY = 0f,
+        currentHealth = 100f,
+        maxHealth = 100f,
+        movementSpeed = GameConstants.PLAYER_MOVE_SPEED,
+        characterState = CharacterState.ALIVE,
+    )
 }

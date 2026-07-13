@@ -1,5 +1,6 @@
 package game.client.network
 
+import game.shared.ecs.component.CharacterState
 import game.shared.protocol.EntitySnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -34,5 +35,9 @@ class SnapshotBufferTest {
         y = y,
         velocityX = 0f,
         velocityY = 0f,
+        currentHealth = 100f,
+        maxHealth = 100f,
+        movementSpeed = 4f,
+        characterState = CharacterState.ALIVE,
     )
 }

@@ -2,7 +2,6 @@ package game.shared.protocol
 
 /** Constants shared by every protocol message exchanged by clients and the authoritative server. */
 object Protocol {
-    // Join messages now carry an opaque reconnect session token.
-    // InteractCommand and GameEvent were added in iteration 24.
-    const val PROTOCOL_VERSION: Int = 4
+    // Version 5 adds authoritative health, movement speed, and character state to entity snapshots.
+    const val PROTOCOL_VERSION: Int = 5
 }

@@ -3,6 +3,7 @@ package game.client.ecs.system
 import com.badlogic.ashley.core.Engine
 import game.client.ecs.component.InterpolatedTransformComponent
 import game.shared.ecs.component.NetworkIdentityComponent
+import game.shared.ecs.component.CharacterState
 import game.shared.protocol.EntitySnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -50,5 +51,9 @@ class SnapshotInterpolationSystemTest {
         y = 0f,
         velocityX = 0f,
         velocityY = 0f,
+        currentHealth = 100f,
+        maxHealth = 100f,
+        movementSpeed = 4f,
+        characterState = CharacterState.ALIVE,
     )
 }

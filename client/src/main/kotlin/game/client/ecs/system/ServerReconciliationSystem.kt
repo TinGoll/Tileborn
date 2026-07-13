@@ -9,6 +9,9 @@ import game.client.network.PredictedInputBuffer
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.ecs.component.PhysicsBodyComponent
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.protocol.EntitySnapshot
 import kotlin.math.exp
 import kotlin.math.sqrt
@@ -34,6 +37,18 @@ class ServerReconciliationSystem(
         val previousY = transform.y
         predictedInputs.acknowledge(acknowledgedSequence)
 
+        if (STATE_MAPPER.get(entity).state != CharacterState.ALIVE) {
+            predictedInputs.clear()
+            velocity.x = 0f
+            velocity.y = 0f
+            transform.x = authoritative.x
+            transform.y = authoritative.y
+            PHYSICS_BODY_MAPPER.get(entity)?.synchronizeTransformToBody = true
+            remainingCorrectionX = 0f
+            remainingCorrectionY = 0f
+            return
+        }
+
         velocity.x = authoritative.velocityX
         velocity.y = authoritative.velocityY
         PHYSICS_BODY_MAPPER.get(entity)?.let { physics ->
@@ -44,8 +59,8 @@ class ServerReconciliationSystem(
             // with every delayed snapshot makes both the player and camera jump at snapshot rate.
             // Reserve a body teleport for corrections that are large enough to indicate divergence.
             predictedInputs.entries().lastOrNull()?.command?.let { command ->
-                velocity.x = command.moveX * game.shared.constants.GameConstants.PLAYER_MOVE_SPEED
-                velocity.y = command.moveY * game.shared.constants.GameConstants.PLAYER_MOVE_SPEED
+                velocity.x = command.moveX * SPEED_MAPPER.get(entity).movementSpeed
+                velocity.y = command.moveY * SPEED_MAPPER.get(entity).movementSpeed
             }
             if (correctionDistance >= snapDistance) {
                 transform.x = authoritative.x
@@ -60,7 +75,13 @@ class ServerReconciliationSystem(
         transform.x = authoritative.x
         transform.y = authoritative.y
         predictedInputs.entries().forEach { entry ->
-            ClientPredictionSystem.apply(entry.command, entry.deltaTime, transform, velocity)
+            ClientPredictionSystem.apply(
+                entry.command,
+                entry.deltaTime,
+                transform,
+                velocity,
+                SPEED_MAPPER.get(entity).movementSpeed,
+            )
         }
 
         val correctionX = transform.x - previousX
@@ -96,10 +117,14 @@ class ServerReconciliationSystem(
         val TRANSFORM_MAPPER = ComponentMapper.getFor(TransformComponent::class.java)
         val VELOCITY_MAPPER = ComponentMapper.getFor(VelocityComponent::class.java)
         val PHYSICS_BODY_MAPPER = ComponentMapper.getFor(PhysicsBodyComponent::class.java)
+        val SPEED_MAPPER = ComponentMapper.getFor(MovementSpeedComponent::class.java)
+        val STATE_MAPPER = ComponentMapper.getFor(CharacterStateComponent::class.java)
         val FAMILY: Family = Family.all(
             LocalPlayerComponent::class.java,
             TransformComponent::class.java,
             VelocityComponent::class.java,
+            MovementSpeedComponent::class.java,
+            CharacterStateComponent::class.java,
         ).get()
     }
 }

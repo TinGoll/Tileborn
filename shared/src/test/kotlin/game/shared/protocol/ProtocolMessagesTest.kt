@@ -1,5 +1,6 @@
 package game.shared.protocol
 
+import game.shared.ecs.component.CharacterState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,6 +23,10 @@ class ProtocolMessagesTest {
             y = 4f,
             velocityX = 1f,
             velocityY = 0f,
+            currentHealth = 80f,
+            maxHealth = 100f,
+            movementSpeed = 4f,
+            characterState = CharacterState.ALIVE,
         )
         val snapshot = WorldSnapshot(
             serverTick = 42L,
@@ -80,6 +85,10 @@ class ProtocolMessagesTest {
                     y = 2f,
                     velocityX = 0.5f,
                     velocityY = 0f,
+                    currentHealth = 0f,
+                    maxHealth = 100f,
+                    movementSpeed = 4f,
+                    characterState = CharacterState.DEAD,
                 ),
             ),
         )

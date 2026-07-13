@@ -5,6 +5,9 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.headless.HeadlessApplication
 import game.server.network.TcpGameServer
 import game.shared.ecs.component.TransformComponent
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.PlayerInputComponent
 import game.shared.protocol.InputCommand
 import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRequest
@@ -18,6 +21,7 @@ import java.net.Socket
 import java.nio.charset.StandardCharsets
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class ServerAuthoritativeMovementTest {
@@ -133,6 +137,79 @@ class ServerAuthoritativeMovementTest {
                             val updatedSnapshot = ProtocolCodec.decodeServer(reader.readLine()) as WorldSnapshot
                             assertEquals(2L, updatedSnapshot.serverTick)
                             assertTrue(updatedSnapshot.entities.single().x > initialX)
+                        }
+                    }
+                }
+            }
+        } finally {
+            serverWorld.dispose()
+            application?.exit()
+        }
+    }
+
+    @Test
+    fun `dead player movement and attack input are ignored`() {
+        val application = ensureHeadlessApplication()
+        val serverWorld = ServerWorld(mapId = "debug_map", mapPath = "maps/debug_map.tmx")
+        try {
+            val player = serverWorld.spawnPlayer(serverEntityId = 1)
+            val transform = player.getComponent(TransformComponent::class.java)
+            val startX = transform.x
+            val startY = transform.y
+            assertTrue(serverWorld.applyDamage(serverEntityId = 1, amount = 100f))
+
+            val accepted = serverWorld.applyInput(
+                serverEntityId = 1,
+                command = InputCommand(
+                    inputSequence = 1L,
+                    clientTick = 1L,
+                    moveX = 1f,
+                    moveY = 0f,
+                    attack = true,
+                ),
+            )
+            serverWorld.update(0.05f)
+
+            assertFalse(accepted)
+            assertEquals(CharacterState.DEAD, player.getComponent(CharacterStateComponent::class.java).state)
+            assertEquals(0f, player.getComponent(PlayerInputComponent::class.java).state.moveX, 0f)
+            assertFalse(player.getComponent(PlayerInputComponent::class.java).state.attack)
+            assertEquals(startX, transform.x, 0.0001f)
+            assertEquals(startY, transform.y, 0.0001f)
+        } finally {
+            serverWorld.dispose()
+            application?.exit()
+        }
+    }
+
+    @Test
+    fun `client receives authoritative health and state through snapshot`() {
+        val application = ensureHeadlessApplication()
+        val serverWorld = ServerWorld(mapId = "debug_map", mapPath = "maps/debug_map.tmx")
+        try {
+            TcpGameServer(
+                port = 0,
+                mapIdProvider = { serverWorld.gameMapData.mapId },
+                serverTickProvider = { 1L },
+                initialSnapshotProvider = { playerEntityId ->
+                    serverWorld.spawnPlayer(playerEntityId)
+                    serverWorld.applyDamage(playerEntityId, 25f)
+                    serverWorld.buildSnapshot(serverTick = 1L)
+                },
+                logger = {},
+            ).use { server ->
+                server.start()
+                Socket("127.0.0.1", server.localPort).use { socket ->
+                    socket.newWriter().use { writer ->
+                        socket.newReader().use { reader ->
+                            writer.writeLine(ProtocolCodec.encodeClient(JoinRequest(playerName = "health-sync-test")))
+                            assertTrue(ProtocolCodec.decodeServer(reader.readLine()) is JoinAccepted)
+
+                            val snapshot = ProtocolCodec.decodeServer(reader.readLine()) as WorldSnapshot
+                            val player = snapshot.entities.single()
+                            assertEquals(75f, player.currentHealth, 0f)
+                            assertEquals(100f, player.maxHealth, 0f)
+                            assertEquals(CharacterState.ALIVE, player.characterState)
                         }
                     }
                 }

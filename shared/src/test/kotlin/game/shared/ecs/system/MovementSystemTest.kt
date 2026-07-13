@@ -2,6 +2,9 @@ package game.shared.ecs.system
 
 import com.badlogic.ashley.core.Engine
 import game.shared.constants.GameConstants
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
@@ -45,11 +48,22 @@ class MovementSystemTest {
         assertEquals(oneFrame.transform.x, twoFrames.transform.x, 0.000001f)
     }
 
+    @Test
+    fun `dead character does not process movement input`() {
+        val fixture = movementFixture(moveX = 1f, characterState = CharacterState.DEAD)
+
+        fixture.engine.update(0.25f)
+
+        assertEquals(0f, fixture.velocity.x, 0f)
+        assertEquals(0f, fixture.transform.x, 0f)
+    }
+
     private fun movementFixture(
         moveX: Float = 0f,
         moveY: Float = 0f,
         startX: Float = 0f,
         startY: Float = 0f,
+        characterState: CharacterState = CharacterState.ALIVE,
     ): MovementFixture {
         val engine = Engine()
         val transform = TransformComponent(startX, startY)
@@ -59,6 +73,8 @@ class MovementSystemTest {
             add(transform)
             add(velocity)
             add(input)
+            add(MovementSpeedComponent(GameConstants.PLAYER_MOVE_SPEED))
+            add(CharacterStateComponent(characterState))
         }
         engine.addEntity(entity)
         engine.addSystem(MovementSystem())

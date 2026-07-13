@@ -4,6 +4,8 @@ import com.badlogic.ashley.core.Engine
 import com.badlogic.ashley.core.EntitySystem
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.system.ServerInitializationSystem
+import game.server.ecs.system.CharacterStateSystem
+import game.server.ecs.system.HealthSystem
 import game.shared.ecs.system.MovementSystem
 import game.shared.ecs.system.PhysicsSimulationSystem
 import game.shared.physics.PhysicsWorldFactory
@@ -13,9 +15,13 @@ class ServerEcsWorld : Disposable {
     /** The server-owned authoritative Box2D world. */
     val physicsWorld = PhysicsWorldFactory.create()
     private val physicsSimulationSystem = PhysicsSimulationSystem(physicsWorld)
+    val healthSystem = HealthSystem()
+    val characterStateSystem = CharacterStateSystem()
 
     val engine: Engine = Engine().apply {
         addSystem(ServerInitializationSystem())
+        addSystem(healthSystem)
+        addSystem(characterStateSystem)
         addSystem(MovementSystem())
         addSystem(physicsSimulationSystem)
     }

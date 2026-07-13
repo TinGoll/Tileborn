@@ -4,7 +4,9 @@ import com.badlogic.ashley.core.ComponentMapper
 import com.badlogic.ashley.core.Entity
 import com.badlogic.ashley.core.Family
 import com.badlogic.ashley.systems.IteratingSystem
-import game.shared.constants.GameConstants
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.ecs.component.PlayerInputComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.TransformComponent
@@ -15,8 +17,17 @@ class MovementSystem : IteratingSystem(FAMILY, PRIORITY) {
     override fun processEntity(entity: Entity, deltaTime: Float) {
         val input = INPUT_MAPPER.get(entity).state
         val velocity = VELOCITY_MAPPER.get(entity)
-        velocity.x = input.moveX * GameConstants.PLAYER_MOVE_SPEED
-        velocity.y = input.moveY * GameConstants.PLAYER_MOVE_SPEED
+        if (STATE_MAPPER.get(entity).state != CharacterState.ALIVE) {
+            velocity.x = 0f
+            velocity.y = 0f
+            return
+        }
+        val movementSpeed = SPEED_MAPPER.get(entity).movementSpeed
+            .takeIf(Float::isFinite)
+            ?.coerceAtLeast(0f)
+            ?: 0f
+        velocity.x = input.moveX * movementSpeed
+        velocity.y = input.moveY * movementSpeed
 
         if (!PHYSICS_BODY_MAPPER.has(entity)) {
             val transform = TRANSFORM_MAPPER.get(entity)
@@ -35,10 +46,16 @@ class MovementSystem : IteratingSystem(FAMILY, PRIORITY) {
             ComponentMapper.getFor(TransformComponent::class.java)
         val PHYSICS_BODY_MAPPER: ComponentMapper<PhysicsBodyComponent> =
             ComponentMapper.getFor(PhysicsBodyComponent::class.java)
+        val SPEED_MAPPER: ComponentMapper<MovementSpeedComponent> =
+            ComponentMapper.getFor(MovementSpeedComponent::class.java)
+        val STATE_MAPPER: ComponentMapper<CharacterStateComponent> =
+            ComponentMapper.getFor(CharacterStateComponent::class.java)
         val FAMILY: Family = Family.all(
             PlayerInputComponent::class.java,
             VelocityComponent::class.java,
             TransformComponent::class.java,
+            MovementSpeedComponent::class.java,
+            CharacterStateComponent::class.java,
         ).get()
     }
 }

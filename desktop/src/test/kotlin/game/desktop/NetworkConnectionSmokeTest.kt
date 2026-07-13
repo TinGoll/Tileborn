@@ -1,5 +1,6 @@
 package game.desktop
 
+import game.shared.ecs.component.CharacterState
 import game.client.debug.ConnectionState
 import game.client.network.TcpGameClient
 import game.server.network.TcpGameServer
@@ -84,6 +85,10 @@ class NetworkConnectionSmokeTest {
                             y = 6f,
                             velocityX = 0f,
                             velocityY = 0f,
+                            currentHealth = 100f,
+                            maxHealth = 100f,
+                            movementSpeed = 4f,
+                            characterState = CharacterState.ALIVE,
                         ),
                     ),
                 )
@@ -98,6 +103,9 @@ class NetworkConnectionSmokeTest {
             assertEquals(client.localPlayerEntityId, snapshot.entities.single().entityId)
             assertEquals(5f, snapshot.entities.single().x, 0f)
             assertEquals(6f, snapshot.entities.single().y, 0f)
+            assertEquals(100f, snapshot.entities.single().currentHealth, 0f)
+            assertEquals(100f, snapshot.entities.single().maxHealth, 0f)
+            assertEquals(CharacterState.ALIVE, snapshot.entities.single().characterState)
             client.close()
         }
     }
@@ -139,7 +147,17 @@ class NetworkConnectionSmokeTest {
             WorldSnapshot(
                 serverTick = 42L,
                 entities = entities.map { (entityId, x) ->
-                    EntitySnapshot(entityId = entityId, x = x, y = 6f, velocityX = 0f, velocityY = 0f)
+                    EntitySnapshot(
+                        entityId = entityId,
+                        x = x,
+                        y = 6f,
+                        velocityX = 0f,
+                        velocityY = 0f,
+                        currentHealth = 100f,
+                        maxHealth = 100f,
+                        movementSpeed = 4f,
+                        characterState = CharacterState.ALIVE,
+                    )
                 },
             )
         }
@@ -197,7 +215,7 @@ class NetworkConnectionSmokeTest {
         fun snapshot() = synchronized(lock) {
             WorldSnapshot(
                 serverTick = 42L,
-                entities = entities.map { (id, x) -> EntitySnapshot(id, x, 0f, 0f, 0f) },
+                entities = entities.map { (id, x) -> testEntitySnapshot(id, x) },
             )
         }
 
@@ -259,7 +277,7 @@ class NetworkConnectionSmokeTest {
         fun snapshot() = synchronized(lock) {
             WorldSnapshot(
                 serverTick = 42L,
-                entities = entities.map { (id, x) -> EntitySnapshot(id, x, 0f, 0f, 0f) },
+                entities = entities.map { (id, x) -> testEntitySnapshot(id, x) },
             )
         }
         TcpGameServer(
@@ -298,7 +316,7 @@ class NetworkConnectionSmokeTest {
         val entities = linkedMapOf<Int, Float>()
         val lock = Any()
         fun snapshot() = synchronized(lock) {
-            WorldSnapshot(42L, entities.map { (id, x) -> EntitySnapshot(id, x, 0f, 0f, 0f) })
+            WorldSnapshot(42L, entities.map { (id, x) -> testEntitySnapshot(id, x) })
         }
         TcpGameServer(
             port = 0,
@@ -361,6 +379,18 @@ class NetworkConnectionSmokeTest {
             assertTrue(server.isRunning)
         }
     }
+
+    private fun testEntitySnapshot(entityId: Int, x: Float): EntitySnapshot = EntitySnapshot(
+        entityId = entityId,
+        x = x,
+        y = 0f,
+        velocityX = 0f,
+        velocityY = 0f,
+        currentHealth = 100f,
+        maxHealth = 100f,
+        movementSpeed = 4f,
+        characterState = CharacterState.ALIVE,
+    )
 
     private fun runningServer(
         serverTickProvider: () -> Long = { 42L },

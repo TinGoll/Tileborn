@@ -11,6 +11,9 @@ import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.HealthComponent
 import game.shared.map.GameMapData
 import game.shared.map.MapCollisionObject
 import game.shared.physics.PhysicsWorldFactory
@@ -77,6 +80,10 @@ class ClientRenderEntityFactoryTest {
                 y = 9f,
                 velocityX = 1f,
                 velocityY = 0f,
+                currentHealth = 75f,
+                maxHealth = 100f,
+                movementSpeed = 4f,
+                characterState = CharacterState.ALIVE,
             ),
         )
 
@@ -90,6 +97,8 @@ class ClientRenderEntityFactoryTest {
         assertNotNull(player.getComponent(CameraTargetComponent::class.java))
         assertNotNull(player.getComponent(LocalPlayerComponent::class.java))
         assertNotNull(player.getComponent(PhysicsBodyComponent::class.java))
+        assertEquals(75f, player.getComponent(HealthComponent::class.java).currentHealth, 0f)
+        assertEquals(CharacterState.ALIVE, player.getComponent(CharacterStateComponent::class.java).state)
         physicsWorld.dispose()
     }
 
@@ -97,7 +106,17 @@ class ClientRenderEntityFactoryTest {
     fun `remote player has an interpolated render transform`() {
         val player = ClientRenderEntityFactory.createRemotePlayerFromSnapshot(
             Engine(),
-            EntitySnapshot(entityId = 7, x = 2f, y = 3f, velocityX = 0f, velocityY = 0f),
+            EntitySnapshot(
+                entityId = 7,
+                x = 2f,
+                y = 3f,
+                velocityX = 0f,
+                velocityY = 0f,
+                currentHealth = 0f,
+                maxHealth = 100f,
+                movementSpeed = 4f,
+                characterState = CharacterState.DEAD,
+            ),
         )
 
         val interpolated = player.getComponent(InterpolatedTransformComponent::class.java)
