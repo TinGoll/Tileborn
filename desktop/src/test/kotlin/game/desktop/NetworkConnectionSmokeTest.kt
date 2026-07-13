@@ -18,6 +18,8 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.Socket
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -161,8 +163,8 @@ class NetworkConnectionSmokeTest {
             logger = {},
         ).use { server ->
             server.start()
-            val first = TcpGameClient(port = server.localPort, pingIntervalMillis = 60_000L)
-            val second = TcpGameClient(port = server.localPort, pingIntervalMillis = 60_000L)
+            val first = TcpGameClient(port = server.localPort, playerName = "first-player", pingIntervalMillis = 60_000L)
+            val second = TcpGameClient(port = server.localPort, playerName = "second-player", pingIntervalMillis = 60_000L)
             try {
                 first.connect()
                 assertTrue(waitUntil { first.connectionState == ConnectionState.CONNECTED })
@@ -180,6 +182,52 @@ class NetworkConnectionSmokeTest {
 
                 second.close()
                 assertTrue(waitUntil { first.lastServerMessage.hasEntityIds(1, 2) })
+            } finally {
+                first.close()
+                second.close()
+            }
+        }
+    }
+
+    @Test
+    fun `new login replaces retained entity for the same player`() {
+        val entities = linkedMapOf<Int, Float>()
+        val lock = Any()
+        val disconnected = CountDownLatch(1)
+        fun snapshot() = synchronized(lock) {
+            WorldSnapshot(
+                serverTick = 42L,
+                entities = entities.map { (id, x) -> EntitySnapshot(id, x, 0f, 0f, 0f) },
+            )
+        }
+
+        TcpGameServer(
+            port = 0,
+            mapIdProvider = { "debug_map" },
+            serverTickProvider = { 42L },
+            initialSnapshotProvider = { id -> synchronized(lock) { entities[id] = 5f }; snapshot() },
+            disconnectSnapshotProvider = { id -> synchronized(lock) { entities.remove(id) }; snapshot() },
+            sessionDisconnectedHandler = { disconnected.countDown() },
+            logger = {},
+        ).use { server ->
+            server.start()
+            val first = TcpGameClient(port = server.localPort, playerName = "same-player", pingIntervalMillis = 60_000L)
+            val second = TcpGameClient(port = server.localPort, playerName = "same-player", pingIntervalMillis = 60_000L)
+            try {
+                first.connect()
+                assertTrue(waitUntil { first.connectionState == ConnectionState.CONNECTED })
+                val oldEntityId = first.localPlayerEntityId
+                first.close()
+                assertTrue(disconnected.await(1, TimeUnit.SECONDS))
+
+                second.connect()
+                assertTrue(waitUntil { second.connectionState == ConnectionState.CONNECTED })
+                assertTrue(waitUntil {
+                    (second.lastServerMessage as? WorldSnapshot)?.entities?.let { snapshots ->
+                        snapshots.size == 1 && snapshots.single().entityId == second.localPlayerEntityId &&
+                            snapshots.none { it.entityId == oldEntityId }
+                    } == true
+                })
             } finally {
                 first.close()
                 second.close()

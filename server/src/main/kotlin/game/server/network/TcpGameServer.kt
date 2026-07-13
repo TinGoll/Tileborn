@@ -162,7 +162,17 @@ class TcpGameServer(
 
                     expireDisconnectedSessions()
 
-                    val retainedSession = resumeOrCreateSession(message)
+                    val resumedSession = resumeOrCreateSession(message)
+                    val retainedSession = resumedSession.session
+                    resumedSession.supersededConnection?.socket.closeQuietly()
+                    resumedSession.supersededEntityId?.let { entityId ->
+                        logger("Session replaced for '${message.playerName}' oldEntity=$entityId")
+                        // The current account identity is the player name. A new login without a
+                        // valid reconnect token must not leave its old authoritative entity in the
+                        // world during the reconnect grace period.
+                        sessionDisconnectedHandler?.invoke(entityId)
+                        disconnectSnapshotProvider?.invoke(entityId)?.let(::broadcastSnapshot)
+                    }
                     val isReconnect = retainedSession.wasDisconnected
                     sessionEstablishedHandler?.invoke(
                         EstablishedSession(
@@ -264,7 +274,7 @@ class TcpGameServer(
         }
     }
 
-    private fun resumeOrCreateSession(request: JoinRequest): RetainedSession = synchronized(sessionLock) {
+    private fun resumeOrCreateSession(request: JoinRequest): ResumedSession = synchronized(sessionLock) {
         val requested = request.sessionToken?.let(retainedSessionsByToken::get)
         val now = clockMillis()
         if (
@@ -273,12 +283,22 @@ class TcpGameServer(
         ) {
             requested.wasDisconnected = requested.activeConnection != null || requested.disconnectedAtMillis != null
             requested.disconnectedAtMillis = null
-            return@synchronized requested
+            return@synchronized ResumedSession(session = requested)
         }
-        RetainedSession(
+        val replaced = retainedSessionsByToken.values.firstOrNull { session ->
+            session.playerName == request.playerName
+        }
+        replaced?.let { retainedSessionsByToken.remove(it.token) }
+        val newSession = RetainedSession(
             token = UUID.randomUUID().toString(),
             entityId = nextEntityId.getAndIncrement(),
+            playerName = request.playerName,
         ).also { retainedSessionsByToken[it.token] = it }
+        ResumedSession(
+            session = newSession,
+            supersededEntityId = replaced?.entityId,
+            supersededConnection = replaced?.activeConnection,
+        )
     }
 
     private fun markDisconnected(session: ClientSession): Boolean =
@@ -344,9 +364,16 @@ class TcpGameServer(
     private class RetainedSession(
         val token: String,
         val entityId: Int,
+        val playerName: String,
         var disconnectedAtMillis: Long? = null,
         var activeConnection: ClientSession? = null,
         var wasDisconnected: Boolean = false,
+    )
+
+    private data class ResumedSession(
+        val session: RetainedSession,
+        val supersededEntityId: Int? = null,
+        val supersededConnection: ClientSession? = null,
     )
 
     private companion object {
