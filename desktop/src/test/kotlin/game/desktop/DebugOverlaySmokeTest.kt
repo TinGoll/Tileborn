@@ -34,12 +34,13 @@ class DebugOverlaySmokeTest {
         overlay.render()
 
         assertEquals("FPS: 75", renderer.lastLines[0])
-        assertEquals("Player: 2.00, 3.00", renderer.lastLines[1])
-        assertEquals("Entities: 1", renderer.lastLines[2])
-        assertEquals("Visible entities: 1", renderer.lastLines[3])
-        assertEquals("Map: debug_map", renderer.lastLines[4])
-        assertEquals("Connection: local", renderer.lastLines[5])
-        assertEquals("Ping: 18 ms", renderer.lastLines[6])
+        assertEquals("Server tick: n/a", renderer.lastLines[1])
+        assertEquals("Player: 2.00, 3.00", renderer.lastLines[2])
+        assertEquals("Entities: 1", renderer.lastLines[3])
+        assertEquals("Visible entities: 1", renderer.lastLines[4])
+        assertEquals("Map: debug_map", renderer.lastLines[5])
+        assertEquals("Connection: local", renderer.lastLines[6])
+        assertEquals("Ping: 18 ms", renderer.lastLines[7])
     }
 
     private class RecordingDebugOverlayRenderer : DebugOverlayRenderer {

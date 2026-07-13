@@ -39,6 +39,7 @@ class DebugOverlay(
 
         return listOf(
             "FPS: ${snapshot.fps}",
+            "Server tick: ${snapshot.serverTick ?: "n/a"}",
             "Player: $playerPosition",
             "Entities: ${snapshot.entityCount}",
             "Visible entities: ${snapshot.visibleEntityCount}",

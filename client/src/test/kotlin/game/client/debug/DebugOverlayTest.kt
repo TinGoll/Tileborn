@@ -24,6 +24,7 @@ class DebugOverlayTest {
                 mapIdProvider = { "debug_map" },
                 connectionStateProvider = { ConnectionState.LOCAL },
                 pingMillisProvider = { 42L },
+                serverTickProvider = { 120L },
             ),
             toggleKeyJustPressed = { false },
             fpsProvider = { 60 },
@@ -35,6 +36,7 @@ class DebugOverlayTest {
         assertEquals(
             listOf(
                 "FPS: 60",
+                "Server tick: 120",
                 "Player: 12.50, 7.25",
                 "Entities: 2",
                 "Visible entities: 2",
@@ -97,10 +99,11 @@ class DebugOverlayTest {
 
         overlay.render()
 
-        assertEquals("Player: none", renderer.lastLines[1])
-        assertEquals("Entities: 1", renderer.lastLines[2])
-        assertEquals("Visible entities: 1", renderer.lastLines[3])
-        assertEquals("Ping: n/a", renderer.lastLines[6])
+        assertEquals("Server tick: n/a", renderer.lastLines[1])
+        assertEquals("Player: none", renderer.lastLines[2])
+        assertEquals("Entities: 1", renderer.lastLines[3])
+        assertEquals("Visible entities: 1", renderer.lastLines[4])
+        assertEquals("Ping: n/a", renderer.lastLines[7])
     }
 
     private class RecordingDebugOverlayRenderer : DebugOverlayRenderer {

@@ -90,6 +90,7 @@ class GameScreen(
                     mapIdProvider = { mapData?.mapId },
                     connectionStateProvider = { networkClient.connectionState },
                     pingMillisProvider = { networkClient.pingMillis },
+                    serverTickProvider = { appliedSnapshot?.serverTick },
                     visibleEntityCountProvider = networkEntities::size,
                     lastGameEventProvider = { lastGameEvent },
                 ),

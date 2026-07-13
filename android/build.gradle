@@ -12,6 +12,9 @@ android {
   namespace = "game.android"
   compileSdk = 36
   buildToolsVersion = "36.1.0"
+  buildFeatures {
+    buildConfig = true
+  }
   sourceSets {
     main {
       manifest.srcFile 'AndroidManifest.xml'
@@ -37,6 +40,11 @@ android {
     targetSdkVersion 35
     versionCode 1
     versionName "1.0"
+    // 10.0.2.2 resolves to the development machine from the Android Emulator.
+    // Override with -PserverHost=<LAN-or-public-host> for a physical device.
+    def serverHost = providers.gradleProperty('serverHost').getOrElse('10.0.2.2')
+    buildConfigField 'String', 'SERVER_HOST', "\"${serverHost}\""
+    buildConfigField 'int', 'SERVER_PORT', providers.gradleProperty('serverPort').getOrElse('54555')
   }
   compileOptions {
     sourceCompatibility "17"
