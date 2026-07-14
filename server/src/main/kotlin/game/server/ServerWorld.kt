@@ -10,8 +10,10 @@ import game.shared.constants.GameConstants
 import game.shared.constants.InterestManagementConstants
 import game.shared.definition.DefinitionRegistry
 import game.shared.ecs.component.DefinitionIdComponent
+import game.shared.ecs.component.AttackComponent
 import game.shared.ecs.component.CharacterState
 import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.CooldownComponent
 import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.ecs.component.NetworkIdentityComponent
@@ -27,6 +29,7 @@ import game.shared.map.interactableById
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.AttackCommand
 import game.shared.protocol.GameEvent
 import game.shared.protocol.GameEventType
 import game.shared.protocol.InteractCommand
@@ -81,6 +84,14 @@ class ServerWorld(
                 add(PlayerInputComponent())
                 add(VelocityComponent())
                 add(HealthComponent(GameConstants.PLAYER_MAX_HEALTH, GameConstants.PLAYER_MAX_HEALTH))
+                add(
+                    AttackComponent(
+                        range = GameConstants.PLAYER_ATTACK_RANGE,
+                        damage = GameConstants.PLAYER_ATTACK_DAMAGE,
+                        minimumDirectionDot = GameConstants.PLAYER_ATTACK_MIN_DIRECTION_DOT,
+                    ),
+                )
+                add(CooldownComponent(GameConstants.PLAYER_ATTACK_COOLDOWN_SECONDS))
                 add(MovementSpeedComponent(GameConstants.PLAYER_MOVE_SPEED))
                 add(CharacterStateComponent())
                 add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(ecsWorld.physicsWorld, position.first, position.second)))
@@ -171,6 +182,19 @@ class ServerWorld(
         ecsWorld.characterStateSystem.synchronizeState(entity)
         return true
     }
+
+    /** Queues one attack intent; duplicate/stale sequences are rejected before validation. */
+    @Synchronized
+    fun queueAttack(serverEntityId: Int, command: AttackCommand): Boolean {
+        val entity = engine.entities.firstOrNull { candidate ->
+            candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
+        } ?: return false
+        return ecsWorld.attackCommandSystem.enqueue(entity, command)
+    }
+
+    /** Returns combat results produced by the most recent authoritative updates. */
+    @Synchronized
+    fun drainAttackEvents(): List<GameEvent> = ecsWorld.attackValidationSystem.drainEvents()
 
     /** Validates and executes a player interaction using only authoritative ECS/map state. */
     @Synchronized

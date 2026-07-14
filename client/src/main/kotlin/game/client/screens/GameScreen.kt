@@ -32,6 +32,7 @@ import game.shared.map.MapInteractableType
 import game.shared.math.WorldUnits
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
+import game.shared.protocol.AttackCommand
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.WorldSnapshot
 import ktx.app.KtxScreen
@@ -58,6 +59,9 @@ class GameScreen(
     private val networkEntities = ClientEntityRegistry()
     private var appliedSnapshot: WorldSnapshot? = null
     private var nextInteractionSequence = 1L
+    private var nextAttackInputSequence = 1L
+    private var clientTick = 0L
+    private var wasAttackPressed = false
     private var wasInteractPressed = false
     private var lastGameEvent: String? = null
 
@@ -108,7 +112,9 @@ class GameScreen(
         applyGameEvents()
         ecsWorld.engine.update(delta)
         sendLocalInput()
+        sendAttackIfRequested()
         sendInteractionIfRequested()
+        clientTick++
         physicsDebugRenderer?.render(ecsWorld.physicsWorld, camera.combined)
         debugOverlay?.render()
         touchControls?.render()
@@ -149,12 +155,36 @@ class GameScreen(
         appliedSnapshot = null
         lastGameEvent = null
         wasInteractPressed = false
+        wasAttackPressed = false
         ecsWorld.predictedInputBuffer.clear()
         touchControls?.dispose()
     }
 
     private fun sendLocalInput() {
         ecsWorld.clientPredictionSystem.drainOutgoingCommands().forEach(networkClient::sendInput)
+    }
+
+    private fun sendAttackIfRequested() {
+        val input = networkClient.localPlayerEntityId
+            ?.let(::findNetworkEntity)
+            ?.getComponent(PlayerInputComponent::class.java)
+            ?.state
+        val attackPressed = input?.attack == true
+        if (!attackPressed || wasAttackPressed) {
+            wasAttackPressed = attackPressed
+            return
+        }
+        wasAttackPressed = true
+        networkClient.sendAttack(
+            AttackCommand(
+                inputSequence = nextAttackInputSequence++,
+                clientTick = clientTick,
+                aimX = input?.aimX ?: 0f,
+                aimY = input?.aimY ?: 0f,
+                // The server selects the actual hit target from authoritative world state.
+                optionalTargetEntityId = null,
+            ),
+        )
     }
 
     private fun applyLatestSnapshot() {
@@ -164,7 +194,7 @@ class GameScreen(
     private fun applyGameEvents() {
         networkClient.drainGameEvents().forEach { event ->
             lastGameEvent = event.message
-            Gdx.app?.log("GameScreen", "Interaction event ${event.eventType}: ${event.message}")
+            Gdx.app?.log("GameScreen", "Gameplay event ${event.eventType}: ${event.message}")
         }
     }
 

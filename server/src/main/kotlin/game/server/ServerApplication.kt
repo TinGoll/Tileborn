@@ -78,6 +78,13 @@ class ServerApplication(
                 // snapshot for every render-rate input command.
                 null
             },
+            attackCommandHandler = { playerEntityId, command ->
+                if (serverWorld.queueAttack(playerEntityId, command)) {
+                    logger("Attack queued entity=$playerEntityId sequence=${command.inputSequence}")
+                } else {
+                    logger("Attack rejected entity=$playerEntityId sequence=${command.inputSequence}: duplicate, stale, or invalid")
+                }
+            },
             interactCommandHandler = { playerEntityId, command ->
                 when (val result = serverWorld.interact(playerEntityId, command)) {
                     is InteractionResult.Accepted -> {
@@ -129,6 +136,9 @@ class ServerApplication(
         try {
             loop.run(maxTicks = maxTicks) { fixedDelta ->
                 serverWorld.update(fixedDelta)
+                serverWorld.drainAttackEvents().forEach { event ->
+                    networkServer?.broadcastGameEvent(event)
+                }
                 networkServer?.broadcastSnapshot(serverWorld.buildSnapshot(loop.serverTick))
             }
         } finally {

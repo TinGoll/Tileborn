@@ -8,6 +8,9 @@ import game.shared.input.GameInputState
 class KeyboardInputSource(
     private val keyPressed: (Int) -> Boolean = { key -> Gdx.input.isKeyPressed(key) },
 ) : GameInputSource {
+    private var lastAimX = 1f
+    private var lastAimY = 0f
+
     override fun update(state: GameInputState) {
         val left = keyPressed(Input.Keys.A) || keyPressed(Input.Keys.LEFT)
         val right = keyPressed(Input.Keys.D) || keyPressed(Input.Keys.RIGHT)
@@ -20,8 +23,12 @@ class KeyboardInputSource(
         )
         state.attack = keyPressed(Input.Keys.SPACE)
         state.interact = keyPressed(Input.Keys.E)
-        state.aimX = 0f
-        state.aimY = 0f
+        if (state.moveX != 0f || state.moveY != 0f) {
+            lastAimX = state.moveX
+            lastAimY = state.moveY
+        }
+        state.aimX = lastAimX
+        state.aimY = lastAimY
     }
 
     private fun direction(negative: Boolean, positive: Boolean): Float =

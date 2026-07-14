@@ -72,6 +72,9 @@ class TouchInputSource(
     private val touchReader: TouchInputReader = GdxTouchInputReader,
     private val screenSize: () -> Pair<Int, Int> = { Gdx.graphics.width to Gdx.graphics.height },
 ) : GameInputSource, TouchControlsOverlay {
+    private var lastAimX = 1f
+    private var lastAimY = 0f
+
     override fun update(state: GameInputState) {
         val (width, height) = screenSize()
         val layout = TouchControlLayout.forScreen(width, height)
@@ -90,8 +93,12 @@ class TouchInputSource(
         }
         state.attack = touches.any { layout.isInside(it.x, it.y, layout.attackCenterX, layout.attackCenterY, layout.buttonRadius) }
         state.interact = touches.any { layout.isInside(it.x, it.y, layout.interactCenterX, layout.interactCenterY, layout.buttonRadius) }
-        state.aimX = 0f
-        state.aimY = 0f
+        if (state.moveX != 0f || state.moveY != 0f) {
+            lastAimX = state.moveX
+            lastAimY = state.moveY
+        }
+        state.aimX = lastAimX
+        state.aimY = lastAimY
     }
 
     override fun render() {

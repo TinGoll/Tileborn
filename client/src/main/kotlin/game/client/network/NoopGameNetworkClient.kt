@@ -2,6 +2,7 @@ package game.client.network
 
 import game.client.debug.ConnectionState
 import game.shared.protocol.InputCommand
+import game.shared.protocol.AttackCommand
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.ServerMessage
 
@@ -15,6 +16,8 @@ object NoopGameNetworkClient : GameNetworkClient {
     override fun connect() = Unit
 
     override fun sendInput(command: InputCommand) = Unit
+
+    override fun sendAttack(command: AttackCommand) = Unit
 
     override fun sendInteract(command: InteractCommand) = Unit
 

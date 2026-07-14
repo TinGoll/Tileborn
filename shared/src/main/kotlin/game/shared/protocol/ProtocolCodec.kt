@@ -13,6 +13,7 @@ object ProtocolCodec {
         is JoinRequest -> gson.toJson(message)
         is InputCommand -> gson.toJson(message)
         is InteractCommand -> gson.toJson(message)
+        is AttackCommand -> gson.toJson(message)
         is PingRequest -> gson.toJson(message)
     }
 
@@ -21,6 +22,7 @@ object ProtocolCodec {
             MessageType.JOIN_REQUEST -> gson.fromJson(payload, JoinRequest::class.java)
             MessageType.INPUT_COMMAND -> gson.fromJson(payload, InputCommand::class.java)
             MessageType.INTERACT_COMMAND -> gson.fromJson(payload, InteractCommand::class.java)
+            MessageType.ATTACK_COMMAND -> gson.fromJson(payload, AttackCommand::class.java)
             MessageType.PING_REQUEST -> gson.fromJson(payload, PingRequest::class.java)
             else -> throw JsonParseException("Message type is not a client message.")
         }

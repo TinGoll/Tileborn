@@ -5,6 +5,7 @@ import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
 import game.shared.protocol.NicknameRules
 import game.shared.protocol.InputCommand
+import game.shared.protocol.AttackCommand
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.GameEvent
 import game.shared.protocol.PingRequest
@@ -32,6 +33,7 @@ class TcpGameServer(
     private val serverTickProvider: () -> Long,
     private val initialSnapshotProvider: ((Int) -> WorldSnapshot)? = null,
     private val inputCommandHandler: ((Int, InputCommand) -> WorldSnapshot?)? = null,
+    private val attackCommandHandler: ((Int, AttackCommand) -> Unit)? = null,
     private val interactCommandHandler: ((Int, InteractCommand) -> GameEvent?)? = null,
     private val disconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
     private val reconnectSnapshotProvider: ((Int) -> WorldSnapshot?)? = null,
@@ -86,6 +88,17 @@ class TcpGameServer(
         sessions.filter { it.entityId != excludedEntityId }.forEach { session ->
             try {
                 session.send(snapshotForRecipient(session.entityId, snapshot))
+            } catch (_: Exception) {
+                session.socket.closeQuietly()
+            }
+        }
+    }
+
+    /** Broadcasts an authoritative gameplay result to connected observers. */
+    fun broadcastGameEvent(event: GameEvent) {
+        sessions.forEach { session ->
+            try {
+                session.send(event)
             } catch (_: Exception) {
                 session.socket.closeQuietly()
             }
@@ -242,6 +255,9 @@ class TcpGameServer(
                                         excludedEntityId = accepted.playerEntityId,
                                     )
                                 }
+                            }
+                            is AttackCommand -> {
+                                attackCommandHandler?.invoke(accepted.playerEntityId, clientMessage)
                             }
                             is InteractCommand -> {
                                 interactCommandHandler?.invoke(accepted.playerEntityId, clientMessage)?.let(session::send)

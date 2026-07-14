@@ -130,6 +130,35 @@ class ProtocolMessagesTest {
         assertEquals(event, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(event)))
     }
 
+    @Test
+    fun `attack command serializes only combat intent`() {
+        val command = AttackCommand(
+            inputSequence = 4L,
+            clientTick = 12L,
+            aimX = 1f,
+            aimY = 0f,
+            optionalTargetEntityId = 9,
+        )
+
+        val encoded = ProtocolCodec.encodeClient(command)
+
+        assertEquals(command, ProtocolCodec.decodeClient(encoded))
+        assertTrue(!encoded.contains("damage", ignoreCase = true))
+        assertTrue(AttackCommand::class.java.declaredFields.none { it.name.equals("damage", ignoreCase = true) })
+    }
+
+    @Test
+    fun `unsupported client damage field is ignored when decoding attack intent`() {
+        val decoded = ProtocolCodec.decodeClient(
+            """{"type":"ATTACK_COMMAND","protocolVersion":${Protocol.PROTOCOL_VERSION},"inputSequence":5,"clientTick":13,"aimX":1.0,"aimY":0.0,"optionalTargetEntityId":9,"damage":999999.0}""",
+        )
+
+        assertEquals(
+            AttackCommand(inputSequence = 5L, clientTick = 13L, aimX = 1f, aimY = 0f, optionalTargetEntityId = 9),
+            decoded,
+        )
+    }
+
     @Test(expected = JsonParseException::class)
     fun `direct client position message is not supported`() {
         ProtocolCodec.decodeClient(

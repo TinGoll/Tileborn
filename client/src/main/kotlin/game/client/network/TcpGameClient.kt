@@ -5,6 +5,7 @@ import game.shared.protocol.JoinAccepted
 import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
 import game.shared.protocol.InputCommand
+import game.shared.protocol.AttackCommand
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.GameEvent
 import game.shared.protocol.NetworkDefaults
@@ -43,6 +44,7 @@ class TcpGameClient(
     private var socket: Socket? = null
     private var thread: Thread? = null
     private val outgoingInput = ConcurrentLinkedQueue<InputCommand>()
+    private val outgoingAttacks = ConcurrentLinkedQueue<AttackCommand>()
     private val outgoingInteractions = ConcurrentLinkedQueue<InteractCommand>()
     private val receivedSnapshots = ConcurrentLinkedQueue<WorldSnapshot>()
     private val receivedGameEvents = ConcurrentLinkedQueue<GameEvent>()
@@ -79,6 +81,7 @@ class TcpGameClient(
         localPlayerEntityId = null
         pingMillis = null
         outgoingInput.clear()
+        outgoingAttacks.clear()
         outgoingInteractions.clear()
         receivedSnapshots.clear()
         receivedGameEvents.clear()
@@ -93,6 +96,12 @@ class TcpGameClient(
     override fun sendInput(command: InputCommand) {
         if (connectionState == ConnectionState.CONNECTED && !closed.get()) {
             outgoingInput += command
+        }
+    }
+
+    override fun sendAttack(command: AttackCommand) {
+        if (connectionState == ConnectionState.CONNECTED && !closed.get()) {
+            outgoingAttacks += command
         }
     }
 
@@ -216,6 +225,7 @@ class TcpGameClient(
         pingTracker.delayNextPing(clockMillis())
         while (!closed.get()) {
             drainOutgoingInput(writer)
+            drainOutgoingAttacks(writer)
             drainOutgoingInteractions(writer)
 
             pingTracker.nextPing(clockMillis())?.let { ping ->
@@ -248,6 +258,13 @@ class TcpGameClient(
     private fun drainOutgoingInput(writer: BufferedWriter) {
         while (true) {
             val command = outgoingInput.poll() ?: return
+            writer.writeLine(ProtocolCodec.encodeClient(command))
+        }
+    }
+
+    private fun drainOutgoingAttacks(writer: BufferedWriter) {
+        while (true) {
+            val command = outgoingAttacks.poll() ?: return
             writer.writeLine(ProtocolCodec.encodeClient(command))
         }
     }

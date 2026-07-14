@@ -39,7 +39,8 @@ class ClientPredictionSystem(
             clientTick = clientTick++,
             moveX = input.moveX,
             moveY = input.moveY,
-            attack = input.attack,
+            // Discrete combat intent is sent separately as AttackCommand on the press edge.
+            attack = false,
             interact = input.interact,
             aimX = input.aimX,
             aimY = input.aimY,

@@ -4,7 +4,10 @@ import com.badlogic.ashley.core.Engine
 import com.badlogic.ashley.core.EntitySystem
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.system.ServerInitializationSystem
+import game.server.ecs.system.AttackCommandSystem
+import game.server.ecs.system.AttackValidationSystem
 import game.server.ecs.system.CharacterStateSystem
+import game.server.ecs.system.CooldownSystem
 import game.server.ecs.system.HealthSystem
 import game.shared.ecs.system.MovementSystem
 import game.shared.ecs.system.PhysicsSimulationSystem
@@ -17,11 +20,17 @@ class ServerEcsWorld : Disposable {
     private val physicsSimulationSystem = PhysicsSimulationSystem(physicsWorld)
     val healthSystem = HealthSystem()
     val characterStateSystem = CharacterStateSystem()
+    val attackCommandSystem = AttackCommandSystem()
+    private val cooldownSystem = CooldownSystem()
+    val attackValidationSystem = AttackValidationSystem(healthSystem, characterStateSystem)
 
     val engine: Engine = Engine().apply {
         addSystem(ServerInitializationSystem())
         addSystem(healthSystem)
         addSystem(characterStateSystem)
+        addSystem(attackCommandSystem)
+        addSystem(cooldownSystem)
+        addSystem(attackValidationSystem)
         addSystem(MovementSystem())
         addSystem(physicsSimulationSystem)
     }
