@@ -7,7 +7,9 @@ import game.server.ecs.system.ServerInitializationSystem
 import game.server.ecs.system.AttackCommandSystem
 import game.server.ecs.system.AttackValidationSystem
 import game.server.ecs.system.CharacterStateSystem
+import game.server.ecs.system.CombatEventSystem
 import game.server.ecs.system.CooldownSystem
+import game.server.ecs.system.DamageSystem
 import game.server.ecs.system.HealthSystem
 import game.shared.ecs.system.MovementSystem
 import game.shared.ecs.system.PhysicsSimulationSystem
@@ -20,9 +22,11 @@ class ServerEcsWorld : Disposable {
     private val physicsSimulationSystem = PhysicsSimulationSystem(physicsWorld)
     val healthSystem = HealthSystem()
     val characterStateSystem = CharacterStateSystem()
+    val combatEventSystem = CombatEventSystem()
+    val damageSystem = DamageSystem(healthSystem, characterStateSystem, combatEventSystem)
     val attackCommandSystem = AttackCommandSystem()
     private val cooldownSystem = CooldownSystem()
-    val attackValidationSystem = AttackValidationSystem(healthSystem, characterStateSystem)
+    val attackValidationSystem = AttackValidationSystem(combatEventSystem)
 
     val engine: Engine = Engine().apply {
         addSystem(ServerInitializationSystem())
@@ -31,6 +35,8 @@ class ServerEcsWorld : Disposable {
         addSystem(attackCommandSystem)
         addSystem(cooldownSystem)
         addSystem(attackValidationSystem)
+        addSystem(damageSystem)
+        addSystem(combatEventSystem)
         addSystem(MovementSystem())
         addSystem(physicsSimulationSystem)
     }

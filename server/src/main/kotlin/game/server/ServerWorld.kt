@@ -30,6 +30,8 @@ import game.shared.physics.PhysicsWorldFactory
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.AttackCommand
+import game.shared.protocol.CombatEvent
+import game.shared.protocol.DamageEvent
 import game.shared.protocol.GameEvent
 import game.shared.protocol.GameEventType
 import game.shared.protocol.InteractCommand
@@ -171,16 +173,22 @@ class ServerWorld(
         return true
     }
 
-    /** Applies damage to a server-owned entity and immediately synchronizes its lifecycle state. */
+    /** Applies server-authored damage through DamageSystem; intended for server gameplay/admin hooks. */
     @Synchronized
     fun applyDamage(serverEntityId: Int, amount: Float): Boolean {
         val entity = engine.entities.firstOrNull { candidate ->
             candidate.getComponent(NetworkIdentityComponent::class.java)?.networkEntityId == serverEntityId.toLong()
         } ?: return false
         if (entity.getComponent(HealthComponent::class.java) == null) return false
-        ecsWorld.healthSystem.applyDamage(entity, amount)
-        ecsWorld.characterStateSystem.synchronizeState(entity)
-        return true
+        return ecsWorld.damageSystem.applyDamage(
+            DamageEvent(
+                eventId = ecsWorld.combatEventSystem.nextEventId(),
+                hitEventId = NO_HIT_EVENT_ID,
+                sourceEntityId = serverEntityId,
+                targetEntityId = serverEntityId,
+                amount = amount,
+            ),
+        )
     }
 
     /** Queues one attack intent; duplicate/stale sequences are rejected before validation. */
@@ -192,9 +200,13 @@ class ServerWorld(
         return ecsWorld.attackCommandSystem.enqueue(entity, command)
     }
 
-    /** Returns combat results produced by the most recent authoritative updates. */
+    /** Returns legacy miss notifications produced by authoritative hit detection. */
     @Synchronized
-    fun drainAttackEvents(): List<GameEvent> = ecsWorld.attackValidationSystem.drainEvents()
+    fun drainAttackEvents(): List<GameEvent> = ecsWorld.attackValidationSystem.drainMissedAttackEvents()
+
+    /** Returns ordered authoritative combat events ready for client delivery. */
+    @Synchronized
+    fun drainCombatEvents(): List<CombatEvent> = ecsWorld.combatEventSystem.drainOutboundEvents()
 
     /** Validates and executes a player interaction using only authoritative ECS/map state. */
     @Synchronized
@@ -339,6 +351,7 @@ class ServerWorld(
         const val DEFAULT_SPAWN_ID = "default"
         const val INTERACTION_RADIUS_WORLD_UNITS = 1f
         const val MESSAGE_TRIGGER_TYPE = "message"
+        const val NO_HIT_EVENT_ID = 0L
     }
 }
 

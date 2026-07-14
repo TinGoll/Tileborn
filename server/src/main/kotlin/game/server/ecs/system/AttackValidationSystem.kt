@@ -12,17 +12,19 @@ import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PendingAttack
 import game.shared.ecs.component.TransformComponent
+import game.shared.protocol.AttackStartedEvent
+import game.shared.protocol.DamageEvent
 import game.shared.protocol.GameEvent
 import game.shared.protocol.GameEventType
+import game.shared.protocol.HitEvent
 import java.util.ArrayDeque
 import kotlin.math.sqrt
 
-/** Selects melee hits and applies fixed server-owned damage after all command validation. */
+/** Validates attack intent and detects hits without mutating target health. */
 class AttackValidationSystem(
-    private val healthSystem: HealthSystem,
-    private val characterStateSystem: CharacterStateSystem,
+    private val combatEventSystem: CombatEventSystem,
 ) : IteratingSystem(FAMILY, PRIORITY) {
-    private val resolvedEvents = ArrayDeque<GameEvent>()
+    private val missedAttackEvents = ArrayDeque<GameEvent>()
 
     override fun processEntity(entity: Entity, deltaTime: Float) {
         val attack = ATTACK_MAPPER.get(entity)
@@ -31,8 +33,8 @@ class AttackValidationSystem(
         }
     }
 
-    fun drainEvents(): List<GameEvent> = buildList {
-        while (resolvedEvents.isNotEmpty()) add(resolvedEvents.removeFirst())
+    fun drainMissedAttackEvents(): List<GameEvent> = buildList {
+        while (missedAttackEvents.isNotEmpty()) add(missedAttackEvents.removeFirst())
     }
 
     private fun validateAndResolve(attacker: Entity, attack: AttackComponent, intent: PendingAttack) {
@@ -49,10 +51,16 @@ class AttackValidationSystem(
         // A valid attack attempt consumes cooldown regardless of whether it hits.
         cooldown.remainingSeconds = cooldown.durationSeconds
         val attackerId = IDENTITY_MAPPER.get(attacker).networkEntityId.toInt()
+        val attackStarted = AttackStartedEvent(
+            eventId = combatEventSystem.nextEventId(),
+            sourceEntityId = attackerId,
+            attackSequence = intent.inputSequence,
+        )
+        combatEventSystem.publish(attackStarted)
         val attackerTransform = TRANSFORM_MAPPER.get(attacker)
         val target = selectTarget(attacker, attackerTransform, attack, aimX, aimY, intent.optionalTargetEntityId)
         if (target == null) {
-            resolvedEvents.addLast(
+            missedAttackEvents.addLast(
                 GameEvent(
                     eventType = GameEventType.ATTACK_MISSED,
                     objectId = intent.optionalTargetEntityId ?: NO_TARGET_OBJECT_ID,
@@ -65,13 +73,17 @@ class AttackValidationSystem(
         }
 
         val targetId = IDENTITY_MAPPER.get(target).networkEntityId.toInt()
-        healthSystem.applyDamage(target, attack.damage)
-        characterStateSystem.synchronizeState(target)
-        resolvedEvents.addLast(
-            GameEvent(
-                eventType = GameEventType.ATTACK_HIT,
-                objectId = targetId,
-                message = "entity $attackerId hit entity $targetId",
+        val hit = HitEvent(
+            eventId = combatEventSystem.nextEventId(),
+            attackEventId = attackStarted.eventId,
+            sourceEntityId = attackerId,
+            targetEntityId = targetId,
+        )
+        combatEventSystem.publish(hit)
+        combatEventSystem.queueDamage(
+            DamageEvent(
+                eventId = combatEventSystem.nextEventId(),
+                hitEventId = hit.eventId,
                 sourceEntityId = attackerId,
                 targetEntityId = targetId,
                 amount = attack.damage,

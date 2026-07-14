@@ -33,6 +33,10 @@ object ProtocolCodec {
         is JoinRejected -> gson.toJson(message)
         is WorldSnapshot -> gson.toJson(message)
         is GameEvent -> gson.toJson(message)
+        is AttackStartedEvent -> gson.toJson(message)
+        is HitEvent -> gson.toJson(message)
+        is DamageEvent -> gson.toJson(message)
+        is EntityDiedEvent -> gson.toJson(message)
         is PongResponse -> gson.toJson(message)
     }
 
@@ -42,6 +46,10 @@ object ProtocolCodec {
             MessageType.JOIN_REJECTED -> gson.fromJson(payload, JoinRejected::class.java)
             MessageType.WORLD_SNAPSHOT -> gson.fromJson(payload, WorldSnapshot::class.java)
             MessageType.GAME_EVENT -> gson.fromJson(payload, GameEvent::class.java)
+            MessageType.ATTACK_STARTED_EVENT -> gson.fromJson(payload, AttackStartedEvent::class.java)
+            MessageType.HIT_EVENT -> gson.fromJson(payload, HitEvent::class.java)
+            MessageType.DAMAGE_EVENT -> gson.fromJson(payload, DamageEvent::class.java)
+            MessageType.ENTITY_DIED_EVENT -> gson.fromJson(payload, EntityDiedEvent::class.java)
             MessageType.PONG_RESPONSE -> gson.fromJson(payload, PongResponse::class.java)
             else -> throw JsonParseException("Message type is not a server message.")
         }

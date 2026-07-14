@@ -148,6 +148,31 @@ class ProtocolMessagesTest {
     }
 
     @Test
+    fun `combat events serialize with source target and authoritative health`() {
+        val attack = AttackStartedEvent(eventId = 1L, sourceEntityId = 4, attackSequence = 9L)
+        val hit = HitEvent(eventId = 2L, attackEventId = 1L, sourceEntityId = 4, targetEntityId = 7)
+        val damage = DamageEvent(
+            eventId = 3L,
+            hitEventId = 2L,
+            sourceEntityId = 4,
+            targetEntityId = 7,
+            amount = 10f,
+            currentHealth = 90f,
+            maxHealth = 100f,
+        )
+        val died = EntityDiedEvent(
+            eventId = 4L,
+            damageEventId = 3L,
+            sourceEntityId = 4,
+            targetEntityId = 7,
+        )
+
+        listOf(attack, hit, damage, died).forEach { event ->
+            assertEquals(event, ProtocolCodec.decodeServer(ProtocolCodec.encodeServer(event)))
+        }
+    }
+
+    @Test
     fun `unsupported client damage field is ignored when decoding attack intent`() {
         val decoded = ProtocolCodec.decodeClient(
             """{"type":"ATTACK_COMMAND","protocolVersion":${Protocol.PROTOCOL_VERSION},"inputSequence":5,"clientTick":13,"aimX":1.0,"aimY":0.0,"optionalTargetEntityId":9,"damage":999999.0}""",

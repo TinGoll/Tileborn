@@ -7,7 +7,10 @@ import game.shared.constants.GameConstants
 import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.protocol.AttackCommand
+import game.shared.protocol.AttackStartedEvent
+import game.shared.protocol.DamageEvent
 import game.shared.protocol.GameEventType
+import game.shared.protocol.HitEvent
 import game.shared.protocol.Protocol
 import game.shared.protocol.ProtocolCodec
 import org.junit.Assert.assertEquals
@@ -24,11 +27,17 @@ class ServerAttackTest {
         world.update(0f)
 
         assertEquals(90f, target.health(), 0f)
-        val event = world.drainAttackEvents().single()
-        assertEquals(GameEventType.ATTACK_HIT, event.eventType)
-        assertEquals(1, event.sourceEntityId)
-        assertEquals(2, event.targetEntityId)
-        assertEquals(GameConstants.PLAYER_ATTACK_DAMAGE, event.amount!!, 0f)
+        val events = world.drainCombatEvents()
+        assertTrue(events[0] is AttackStartedEvent)
+        val hit = events[1] as HitEvent
+        val damage = events[2] as DamageEvent
+        assertEquals(1, hit.sourceEntityId)
+        assertEquals(2, hit.targetEntityId)
+        assertEquals(hit.eventId, damage.hitEventId)
+        assertEquals(1, damage.sourceEntityId)
+        assertEquals(2, damage.targetEntityId)
+        assertEquals(GameConstants.PLAYER_ATTACK_DAMAGE, damage.amount, 0f)
+        assertEquals(90f, damage.currentHealth!!, 0f)
     }
 
     @Test
@@ -40,6 +49,7 @@ class ServerAttackTest {
 
         assertEquals(GameConstants.PLAYER_MAX_HEALTH, target.health(), 0f)
         assertEquals(GameEventType.ATTACK_MISSED, world.drainAttackEvents().single().eventType)
+        assertTrue(world.drainCombatEvents().single() is AttackStartedEvent)
     }
 
     @Test
@@ -47,20 +57,20 @@ class ServerAttackTest {
         val (_, target) = spawnCombatants(world, targetOffsetX = 1f)
         world.queueAttack(1, command(sequence = 1L, targetEntityId = 2))
         world.update(0f)
-        world.drainAttackEvents()
+        world.drainCombatEvents()
 
         world.queueAttack(1, command(sequence = 2L, targetEntityId = 2))
         world.update(GameConstants.PLAYER_ATTACK_COOLDOWN_SECONDS / 2f)
 
         assertEquals(90f, target.health(), 0f)
-        assertTrue(world.drainAttackEvents().isEmpty())
+        assertTrue(world.drainCombatEvents().isEmpty())
 
         world.update(GameConstants.PLAYER_ATTACK_COOLDOWN_SECONDS)
         world.queueAttack(1, command(sequence = 3L, targetEntityId = 2))
         world.update(0f)
 
         assertEquals(80f, target.health(), 0f)
-        assertEquals(GameEventType.ATTACK_HIT, world.drainAttackEvents().single().eventType)
+        assertEquals(3, world.drainCombatEvents().size)
     }
 
     @Test
@@ -69,7 +79,7 @@ class ServerAttackTest {
         val first = command(sequence = 7L, targetEntityId = 2)
         assertTrue(world.queueAttack(1, first))
         world.update(0f)
-        world.drainAttackEvents()
+        world.drainCombatEvents()
         world.update(GameConstants.PLAYER_ATTACK_COOLDOWN_SECONDS)
 
         assertFalse(world.queueAttack(1, first))
@@ -77,19 +87,20 @@ class ServerAttackTest {
         world.update(0f)
 
         assertEquals(90f, target.health(), 0f)
-        assertTrue(world.drainAttackEvents().isEmpty())
+        assertTrue(world.drainCombatEvents().isEmpty())
     }
 
     @Test
     fun `dead player cannot attack`() = withWorld { world ->
         val (_, target) = spawnCombatants(world, targetOffsetX = 1f)
         assertTrue(world.applyDamage(1, GameConstants.PLAYER_MAX_HEALTH))
+        world.drainCombatEvents()
 
         world.queueAttack(1, command(sequence = 1L, targetEntityId = 2))
         world.update(0f)
 
         assertEquals(GameConstants.PLAYER_MAX_HEALTH, target.health(), 0f)
-        assertTrue(world.drainAttackEvents().isEmpty())
+        assertTrue(world.drainCombatEvents().isEmpty())
     }
 
     @Test
@@ -103,6 +114,27 @@ class ServerAttackTest {
         world.update(0f)
 
         assertEquals(90f, target.health(), 0f)
+    }
+
+    @Test
+    fun `attack from nonexistent entity is rejected`() = withWorld { world ->
+        world.spawnPlayer(2)
+
+        assertFalse(world.queueAttack(9999, command(sequence = 1L, targetEntityId = 2)))
+        world.update(0f)
+
+        assertTrue(world.drainCombatEvents().isEmpty())
+    }
+
+    @Test
+    fun `nonexistent target produces no hit or damage event`() = withWorld { world ->
+        world.spawnPlayer(1)
+
+        assertTrue(world.queueAttack(1, command(sequence = 1L, targetEntityId = 9999)))
+        world.update(0f)
+
+        assertEquals(listOf(AttackStartedEvent::class.java), world.drainCombatEvents().map { it::class.java })
+        assertEquals(GameEventType.ATTACK_MISSED, world.drainAttackEvents().single().eventType)
     }
 
     private fun spawnCombatants(world: ServerWorld, targetOffsetX: Float) =

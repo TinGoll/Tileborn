@@ -136,6 +136,9 @@ class ServerApplication(
         try {
             loop.run(maxTicks = maxTicks) { fixedDelta ->
                 serverWorld.update(fixedDelta)
+                serverWorld.drainCombatEvents().forEach { event ->
+                    networkServer?.broadcastCombatEvent(event)
+                }
                 serverWorld.drainAttackEvents().forEach { event ->
                     networkServer?.broadcastGameEvent(event)
                 }

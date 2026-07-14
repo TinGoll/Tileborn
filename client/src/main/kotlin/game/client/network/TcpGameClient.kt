@@ -6,6 +6,7 @@ import game.shared.protocol.JoinRejected
 import game.shared.protocol.JoinRequest
 import game.shared.protocol.InputCommand
 import game.shared.protocol.AttackCommand
+import game.shared.protocol.CombatEvent
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.GameEvent
 import game.shared.protocol.NetworkDefaults
@@ -48,6 +49,7 @@ class TcpGameClient(
     private val outgoingInteractions = ConcurrentLinkedQueue<InteractCommand>()
     private val receivedSnapshots = ConcurrentLinkedQueue<WorldSnapshot>()
     private val receivedGameEvents = ConcurrentLinkedQueue<GameEvent>()
+    private val receivedCombatEvents = ConcurrentLinkedQueue<CombatEvent>()
 
     @Volatile
     override var connectionState: ConnectionState = ConnectionState.DISCONNECTED
@@ -85,6 +87,7 @@ class TcpGameClient(
         outgoingInteractions.clear()
         receivedSnapshots.clear()
         receivedGameEvents.clear()
+        receivedCombatEvents.clear()
         connectionState = if (sessionToken == null) ConnectionState.CONNECTING else ConnectionState.RECONNECTING
         logger("TCP client connecting to $host:$port")
         thread = Thread(::runClient, "tcp-game-client").apply {
@@ -117,6 +120,10 @@ class TcpGameClient(
 
     override fun drainGameEvents(): List<GameEvent> = buildList {
         while (true) add(receivedGameEvents.poll() ?: break)
+    }
+
+    override fun drainCombatEvents(): List<CombatEvent> = buildList {
+        while (true) add(receivedCombatEvents.poll() ?: break)
     }
 
     override fun close() {
@@ -247,6 +254,7 @@ class TcpGameClient(
             lastServerMessage = message
             if (message is WorldSnapshot) receivedSnapshots += message
             if (message is GameEvent) receivedGameEvents += message
+            if (message is CombatEvent) receivedCombatEvents += message
             if (message is PongResponse) {
                 pingTracker.recordPong(message, clockMillis())?.let { roundTripMillis ->
                     pingMillis = roundTripMillis

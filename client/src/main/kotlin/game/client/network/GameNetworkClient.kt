@@ -3,6 +3,7 @@ package game.client.network
 import game.client.debug.ConnectionState
 import game.shared.protocol.InputCommand
 import game.shared.protocol.AttackCommand
+import game.shared.protocol.CombatEvent
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.GameEvent
 import game.shared.protocol.ServerMessage
@@ -33,4 +34,6 @@ interface GameNetworkClient : AutoCloseable {
     fun drainWorldSnapshots(): List<WorldSnapshot> = listOfNotNull(lastServerMessage as? WorldSnapshot)
 
     fun drainGameEvents(): List<GameEvent> = emptyList()
+
+    fun drainCombatEvents(): List<CombatEvent> = emptyList()
 }

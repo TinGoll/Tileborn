@@ -623,10 +623,11 @@ must never replace an active connection or grant access to another character's p
 
 Protocol changes that break compatibility must update the protocol version.
 
-Current migration note: protocol v8 adds `AttackCommand` (`inputSequence`, `clientTick`,
-`aimX`, `aimY`, optional target hint) and authoritative `ATTACK_HIT` / `ATTACK_MISSED`
-game events. Damage is intentionally absent from the client command and is selected by
-the server combat systems.
+Current migration note: protocol v9 replaces the generic hit result with explicit
+`AttackStartedEvent`, `HitEvent`, `DamageEvent`, and `EntityDiedEvent` messages. Damage
+remains absent from `AttackCommand`: hit detection creates a server-owned `DamageEvent`,
+and only `DamageSystem` mutates health. Applied damage events include authoritative
+current and maximum health for client reconciliation. Protocol v8 clients are rejected.
 
 ---
 

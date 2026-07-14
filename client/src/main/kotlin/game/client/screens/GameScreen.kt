@@ -23,6 +23,9 @@ import game.client.network.GameNetworkClient
 import game.client.network.NoopGameNetworkClient
 import game.client.input.TouchControlsOverlay
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.CharacterState
+import game.shared.ecs.component.CharacterStateComponent
+import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.map.GameMapData
@@ -33,6 +36,10 @@ import game.shared.math.WorldUnits
 import game.shared.physics.TiledCollisionLoader
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.AttackCommand
+import game.shared.protocol.AttackStartedEvent
+import game.shared.protocol.DamageEvent
+import game.shared.protocol.EntityDiedEvent
+import game.shared.protocol.HitEvent
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.WorldSnapshot
 import ktx.app.KtxScreen
@@ -110,6 +117,7 @@ class GameScreen(
         clearScreen(red = 0.7f, green = 0.7f, blue = 0.7f)
         applyLatestSnapshot()
         applyGameEvents()
+        applyCombatEvents()
         ecsWorld.engine.update(delta)
         sendLocalInput()
         sendAttackIfRequested()
@@ -195,6 +203,37 @@ class GameScreen(
         networkClient.drainGameEvents().forEach { event ->
             lastGameEvent = event.message
             Gdx.app?.log("GameScreen", "Gameplay event ${event.eventType}: ${event.message}")
+        }
+    }
+
+    /** Applies only server-authored combat results; rendering continues to read ECS data. */
+    private fun applyCombatEvents() {
+        networkClient.drainCombatEvents().forEach { event ->
+            lastGameEvent = when (event) {
+                is AttackStartedEvent -> "entity ${event.sourceEntityId} started attack ${event.attackSequence}"
+                is HitEvent -> "entity ${event.sourceEntityId} hit entity ${event.targetEntityId}"
+                is DamageEvent -> {
+                    val currentHealth = event.currentHealth
+                    val maxHealth = event.maxHealth
+                    if (currentHealth != null && maxHealth != null) {
+                        findNetworkEntity(event.targetEntityId)
+                            ?.getComponent(HealthComponent::class.java)
+                            ?.let { health ->
+                                health.currentHealth = currentHealth
+                                health.maxHealth = maxHealth
+                            }
+                    }
+                    "entity ${event.targetEntityId} health ${currentHealth ?: "unknown"}/" +
+                        "${maxHealth ?: "unknown"}"
+                }
+                is EntityDiedEvent -> {
+                    findNetworkEntity(event.targetEntityId)
+                        ?.getComponent(CharacterStateComponent::class.java)
+                        ?.state = CharacterState.DEAD
+                    "entity ${event.targetEntityId} died"
+                }
+            }
+            Gdx.app?.log("GameScreen", "Combat event ${event.type}: $lastGameEvent")
         }
     }
 

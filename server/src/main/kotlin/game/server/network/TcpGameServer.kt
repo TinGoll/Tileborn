@@ -6,6 +6,7 @@ import game.shared.protocol.JoinRequest
 import game.shared.protocol.NicknameRules
 import game.shared.protocol.InputCommand
 import game.shared.protocol.AttackCommand
+import game.shared.protocol.CombatEvent
 import game.shared.protocol.InteractCommand
 import game.shared.protocol.GameEvent
 import game.shared.protocol.PingRequest
@@ -96,6 +97,17 @@ class TcpGameServer(
 
     /** Broadcasts an authoritative gameplay result to connected observers. */
     fun broadcastGameEvent(event: GameEvent) {
+        sessions.forEach { session ->
+            try {
+                session.send(event)
+            } catch (_: Exception) {
+                session.socket.closeQuietly()
+            }
+        }
+    }
+
+    /** Broadcasts an authoritative combat stage/result to connected observers. */
+    fun broadcastCombatEvent(event: CombatEvent) {
         sessions.forEach { session ->
             try {
                 session.send(event)
