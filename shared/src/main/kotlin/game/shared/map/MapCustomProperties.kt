@@ -17,4 +17,20 @@ class MapCustomProperties(
 
     fun string(name: String, defaultValue: String): String =
         properties.get(name)?.toString()?.trim()?.takeIf(String::isNotEmpty) ?: defaultValue
+
+    fun requireInt(name: String, minimum: Int = Int.MIN_VALUE): Int {
+        val value = properties.get(name)?.toString()?.trim()?.toIntOrNull()
+        require(value != null && value >= minimum) {
+            "$context requires an integer '$name' custom property >= $minimum"
+        }
+        return value
+    }
+
+    fun requireFloat(name: String, minimum: Float = -Float.MAX_VALUE): Float {
+        val value = properties.get(name)?.toString()?.trim()?.toFloatOrNull()
+        require(value != null && value.isFinite() && value >= minimum) {
+            "$context requires a finite number '$name' custom property >= $minimum"
+        }
+        return value
+    }
 }

@@ -7,7 +7,7 @@ data class GameMapData(
     val collisionObjects: List<MapCollisionObject>,
     val triggers: List<MapTrigger>,
     val portals: List<MapPortal>,
-    val mobSpawnPoints: List<MapMobSpawnPoint> = emptyList(),
+    val npcSpawnPoints: List<NpcSpawnPoint> = emptyList(),
 ) {
     fun requireSpawnPoint(spawnId: String): MapSpawnPoint =
         spawnPoints.firstOrNull { it.spawnId == spawnId }
@@ -42,10 +42,13 @@ data class MapSpawnPoint(
     val y: Float,
 )
 
-/** Server-owned mob instance configured explicitly in Tiled. */
-data class MapMobSpawnPoint(
+/** Server-owned NPC population rule configured explicitly in Tiled. */
+data class NpcSpawnPoint(
     val spawnId: String,
-    val definitionId: String,
+    val mobDefinitionId: String,
+    val maxAlive: Int,
+    val respawnSeconds: Float,
+    val spawnRadius: Float,
     val x: Float,
     val y: Float,
 )

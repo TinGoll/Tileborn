@@ -4,6 +4,8 @@ import com.badlogic.gdx.ApplicationAdapter
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.headless.HeadlessApplication
 import game.server.ecs.component.MobComponent
+import game.server.ecs.component.NpcControllerComponent
+import game.server.ecs.component.SpawnOriginComponent
 import game.shared.definition.DefinitionRegistry
 import game.shared.definition.MobDefinition
 import game.shared.ecs.component.DefinitionIdComponent
@@ -37,6 +39,8 @@ class ServerMobDefinitionSpawnTest {
                 0f,
             )
             assertNotNull(mob.getComponent(MobComponent::class.java))
+            assertNotNull(mob.getComponent(NpcControllerComponent::class.java))
+            assertEquals("manual:500", mob.getComponent(SpawnOriginComponent::class.java).spawnId)
             val snapshot = world.buildSnapshot(serverTick = 1L).entities.single()
             assertEquals(NetworkEntityKind.MOB, snapshot.entityKind)
             assertEquals(definition.id, snapshot.definitionId)
@@ -67,7 +71,7 @@ class ServerMobDefinitionSpawnTest {
     }
 
     private fun mobDefinition() = MobDefinition(
-        id = "test_mob",
+        id = "slime",
         displayName = "Test Mob",
         maxHealth = 75f,
         movementSpeed = 2.5f,

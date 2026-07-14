@@ -142,7 +142,7 @@ class ClientRenderEntityFactoryTest {
     }
 
     @Test
-    fun `remote mob is rendered green and keeps its definition id`() {
+    fun `remote mob rendering smoke uses green primitive and keeps its definition id`() {
         val physicsWorld = PhysicsWorldFactory.create()
         val mob = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
             Engine(),

@@ -432,6 +432,7 @@ ground
 decorations
 collision
 spawn_points
+npc_spawn_points
 triggers
 portals
 objects
@@ -455,6 +456,13 @@ Example Tiled custom properties:
 ```text id="k1elsd"
 type = spawn
 spawnId = default
+
+type = npc_spawn
+spawnId = slime_camp
+mobDefinitionId = slime
+maxAlive = 3
+respawnSeconds = 5
+spawnRadius = 2
 
 type = portal
 targetMap = dungeon_01

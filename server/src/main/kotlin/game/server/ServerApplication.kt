@@ -54,15 +54,7 @@ class ServerApplication(
                 "spawns=${serverWorld.gameMapData.spawnPoints.size} " +
                 "collisions=${serverWorld.gameMapData.collisionObjects.size}",
         )
-        serverWorld.gameMapData.mobSpawnPoints.forEachIndexed { index, spawn ->
-            serverWorld.spawnMob(
-                serverEntityId = FIRST_MOB_ENTITY_ID - index,
-                definitionId = spawn.definitionId,
-                x = spawn.x,
-                y = spawn.y,
-            )
-        }
-        logger("Spawned map mobs=${serverWorld.gameMapData.mobSpawnPoints.size}")
+        logger("Loaded NPC spawn points=${serverWorld.gameMapData.npcSpawnPoints.size}")
         networkServer = TcpGameServer(
             port = networkPort,
             mapIdProvider = { serverWorld.gameMapData.mapId },
@@ -173,6 +165,5 @@ class ServerApplication(
         const val DEFAULT_MAP_PATH = "maps/debug_map.tmx"
         const val DEFAULT_MOBS_PATH = "definitions/mobs.json"
         const val DEFAULT_ITEMS_PATH = "definitions/items.json"
-        const val FIRST_MOB_ENTITY_ID = -1
     }
 }

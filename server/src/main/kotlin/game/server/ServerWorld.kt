@@ -4,7 +4,9 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.ServerEcsWorld
 import game.server.ecs.component.MobComponent
+import game.server.ecs.component.NpcControllerComponent
 import game.server.ecs.component.ServerAuthorityComponent
+import game.server.ecs.component.SpawnOriginComponent
 import game.server.persistence.SavedCharacterState
 import game.shared.constants.GameConstants
 import game.shared.constants.InterestManagementConstants
@@ -59,6 +61,13 @@ class ServerWorld(
             tiledMap.dispose()
         }
         TiledCollisionLoader(ecsWorld.physicsWorld).load(gameMapData)
+        // DefinitionRegistry.empty() remains useful for focused world tests that do not exercise
+        // definitions. Production startup always supplies the loaded, validated registry.
+        val managedNpcSpawnPoints = if (definitionRegistry.mobCount == 0) emptyList() else gameMapData.npcSpawnPoints
+        ecsWorld.configureMobLifecycle(managedNpcSpawnPoints, definitionRegistry) {
+                entityId, definitionId, x, y, spawnId ->
+            spawnMob(entityId, definitionId, x, y, spawnId)
+        }
     }
 
     @Synchronized
@@ -103,7 +112,13 @@ class ServerWorld(
 
     /** Creates a mob instance from validated static data; components hold runtime state only. */
     @Synchronized
-    fun spawnMob(serverEntityId: Int, definitionId: String, x: Float, y: Float) =
+    fun spawnMob(
+        serverEntityId: Int,
+        definitionId: String,
+        x: Float,
+        y: Float,
+        spawnOriginId: String = "manual:$serverEntityId",
+    ) =
         definitionRegistry.requireMob(definitionId).let { definition ->
             engine.createEntity().apply {
                 add(TransformComponent(x = x, y = y))
@@ -124,6 +139,8 @@ class ServerWorld(
                     ),
                 )
                 add(MobComponent())
+                add(SpawnOriginComponent(spawnOriginId))
+                add(NpcControllerComponent())
                 add(ServerAuthorityComponent())
             }.also(engine::addEntity)
         }

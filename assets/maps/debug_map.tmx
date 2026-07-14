@@ -45,24 +45,33 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup id="6" name="mob_spawns">
+ <objectgroup id="6" name="npc_spawn_points">
   <object id="9" name="slime_north_west" type="mob_spawn" x="96" y="96">
    <properties>
-    <property name="definitionId" value="slime"/>
+    <property name="maxAlive" type="int" value="1"/>
+    <property name="mobDefinitionId" value="slime"/>
+    <property name="respawnSeconds" type="float" value="5"/>
+    <property name="spawnRadius" type="float" value="0"/>
     <property name="spawnId" value="slime_north_west"/>
    </properties>
    <point/>
   </object>
   <object id="10" name="slime_north_east" type="mob_spawn" x="224" y="96">
    <properties>
-    <property name="definitionId" value="slime"/>
+    <property name="maxAlive" type="int" value="1"/>
+    <property name="mobDefinitionId" value="slime"/>
+    <property name="respawnSeconds" type="float" value="5"/>
+    <property name="spawnRadius" type="float" value="0"/>
     <property name="spawnId" value="slime_north_east"/>
    </properties>
    <point/>
   </object>
   <object id="11" name="slime_south_east" type="mob_spawn" x="224" y="224">
    <properties>
-    <property name="definitionId" value="slime"/>
+    <property name="maxAlive" type="int" value="1"/>
+    <property name="mobDefinitionId" value="slime"/>
+    <property name="respawnSeconds" type="float" value="5"/>
+    <property name="spawnRadius" type="float" value="0"/>
     <property name="spawnId" value="slime_south_east"/>
    </properties>
    <point/>

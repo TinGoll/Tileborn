@@ -27,19 +27,22 @@ class TiledGameplayMapParserTest {
     }
 
     @Test
-    fun `mob spawn point includes definition id in world units`() {
+    fun `npc spawn point includes population settings in world units`() {
         val map = completeMap()
         try {
-            map.layers[TiledGameplayMapParser.MOB_SPAWNS_LAYER].objects.add(
+            map.layers[TiledGameplayMapParser.NPC_SPAWN_POINTS_LAYER].objects.add(
                 PointMapObject(96f, 128f).withProperties(
                     "spawnId" to "slime_1",
-                    "definitionId" to "slime",
+                    "mobDefinitionId" to "slime",
+                    "maxAlive" to 3,
+                    "respawnSeconds" to 5f,
+                    "spawnRadius" to 2f,
                 ),
             )
 
-            val spawn = TiledGameplayMapParser().parse("test_map", map).mobSpawnPoints.single()
+            val spawn = TiledGameplayMapParser().parse("test_map", map).npcSpawnPoints.single()
 
-            assertEquals(MapMobSpawnPoint("slime_1", "slime", 3f, 4f), spawn)
+            assertEquals(NpcSpawnPoint("slime_1", "slime", 3, 5f, 2f, 3f, 4f), spawn)
         } finally {
             map.dispose()
         }
@@ -104,7 +107,7 @@ class TiledGameplayMapParserTest {
     private fun completeMap() = TiledMap().apply {
         layers.add(MapLayer().named(TiledGameplayMapParser.COLLISION_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.SPAWN_POINTS_LAYER))
-        layers.add(MapLayer().named(TiledGameplayMapParser.MOB_SPAWNS_LAYER))
+        layers.add(MapLayer().named(TiledGameplayMapParser.NPC_SPAWN_POINTS_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.TRIGGERS_LAYER))
         layers.add(MapLayer().named(TiledGameplayMapParser.PORTALS_LAYER))
     }
