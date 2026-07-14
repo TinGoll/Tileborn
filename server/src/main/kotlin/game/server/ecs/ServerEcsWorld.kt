@@ -12,8 +12,11 @@ import game.server.ecs.system.CombatEventSystem
 import game.server.ecs.system.CooldownSystem
 import game.server.ecs.system.DamageSystem
 import game.server.ecs.system.HealthSystem
+import game.server.ecs.system.MobAiSystem
 import game.server.ecs.system.MobDespawnSystem
+import game.server.ecs.system.MobMovementIntentSystem
 import game.server.ecs.system.MobSpawnSystem
+import game.server.ecs.system.TargetAcquisitionSystem
 import game.shared.definition.DefinitionRegistry
 import game.shared.map.NpcSpawnPoint
 import game.shared.ecs.system.MovementSystem
@@ -39,11 +42,14 @@ class ServerEcsWorld : Disposable {
         addSystem(ServerInitializationSystem())
         addSystem(healthSystem)
         addSystem(characterStateSystem)
+        addSystem(TargetAcquisitionSystem())
+        addSystem(MobAiSystem())
         addSystem(attackCommandSystem)
         addSystem(cooldownSystem)
         addSystem(attackValidationSystem)
         addSystem(damageSystem)
         addSystem(combatEventSystem)
+        addSystem(MobMovementIntentSystem())
         addSystem(MovementSystem())
         addSystem(physicsSimulationSystem)
     }

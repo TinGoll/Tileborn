@@ -3,12 +3,18 @@ package game.server
 import com.badlogic.gdx.ApplicationAdapter
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.headless.HeadlessApplication
+import game.server.ecs.component.AggroTargetComponent
+import game.server.ecs.component.AiState
+import game.server.ecs.component.AiStateComponent
+import game.server.ecs.component.HomePositionComponent
 import game.server.ecs.component.MobComponent
 import game.server.ecs.component.NpcControllerComponent
 import game.server.ecs.component.SpawnOriginComponent
 import game.shared.definition.DefinitionRegistry
 import game.shared.definition.MobDefinition
 import game.shared.ecs.component.DefinitionIdComponent
+import game.shared.ecs.component.AttackComponent
+import game.shared.ecs.component.CooldownComponent
 import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.protocol.NetworkEntityKind
@@ -40,6 +46,16 @@ class ServerMobDefinitionSpawnTest {
             )
             assertNotNull(mob.getComponent(MobComponent::class.java))
             assertNotNull(mob.getComponent(NpcControllerComponent::class.java))
+            val ai = mob.getComponent(AiStateComponent::class.java)
+            assertEquals(AiState.IDLE, ai.state)
+            assertEquals(definition.aggroRadius, ai.aggroRadius, 0f)
+            assertEquals(definition.attackRadius, ai.attackRadius, 0f)
+            assertEquals(null, mob.getComponent(AggroTargetComponent::class.java).targetEntityId)
+            val home = mob.getComponent(HomePositionComponent::class.java)
+            assertEquals(3f, home.x, 0f)
+            assertEquals(4f, home.y, 0f)
+            assertEquals(definition.attackDamage, mob.getComponent(AttackComponent::class.java).damage, 0f)
+            assertEquals(definition.attackCooldown, mob.getComponent(CooldownComponent::class.java).durationSeconds, 0f)
             assertEquals("manual:500", mob.getComponent(SpawnOriginComponent::class.java).spawnId)
             val snapshot = world.buildSnapshot(serverTick = 1L).entities.single()
             assertEquals(NetworkEntityKind.MOB, snapshot.entityKind)

@@ -3,6 +3,9 @@ package game.server
 import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.utils.Disposable
 import game.server.ecs.ServerEcsWorld
+import game.server.ecs.component.AggroTargetComponent
+import game.server.ecs.component.AiStateComponent
+import game.server.ecs.component.HomePositionComponent
 import game.server.ecs.component.MobComponent
 import game.server.ecs.component.NpcControllerComponent
 import game.server.ecs.component.ServerAuthorityComponent
@@ -129,6 +132,14 @@ class ServerWorld(
                 add(CharacterStateComponent())
                 add(VelocityComponent())
                 add(
+                    AttackComponent(
+                        range = definition.attackRadius,
+                        damage = definition.attackDamage,
+                        minimumDirectionDot = MOB_ATTACK_MIN_DIRECTION_DOT,
+                    ),
+                )
+                add(CooldownComponent(definition.attackCooldown))
+                add(
                     PhysicsBodyComponent(
                         PhysicsWorldFactory.createDynamicCircleBody(
                             ecsWorld.physicsWorld,
@@ -139,6 +150,9 @@ class ServerWorld(
                     ),
                 )
                 add(MobComponent())
+                add(AiStateComponent(aggroRadius = definition.aggroRadius, attackRadius = definition.attackRadius))
+                add(AggroTargetComponent())
+                add(HomePositionComponent(x, y))
                 add(SpawnOriginComponent(spawnOriginId))
                 add(NpcControllerComponent())
                 add(ServerAuthorityComponent())
@@ -369,6 +383,7 @@ class ServerWorld(
         const val INTERACTION_RADIUS_WORLD_UNITS = 1f
         const val MESSAGE_TRIGGER_TYPE = "message"
         const val NO_HIT_EVENT_ID = 0L
+        const val MOB_ATTACK_MIN_DIRECTION_DOT = 0f
     }
 }
 

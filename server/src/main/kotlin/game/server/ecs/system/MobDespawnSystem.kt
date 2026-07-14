@@ -20,7 +20,7 @@ class MobDespawnSystem(
     }
 
     companion object {
-        const val PRIORITY = 80
+        const val PRIORITY = 87
         private val STATE_MAPPER = ComponentMapper.getFor(CharacterStateComponent::class.java)
         private val ORIGIN_MAPPER = ComponentMapper.getFor(SpawnOriginComponent::class.java)
         private val FAMILY = Family.all(
