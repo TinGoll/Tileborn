@@ -40,6 +40,7 @@ class ServerMobDefinitionSpawnTest {
             val snapshot = world.buildSnapshot(serverTick = 1L).entities.single()
             assertEquals(NetworkEntityKind.MOB, snapshot.entityKind)
             assertEquals(definition.id, snapshot.definitionId)
+            assertEquals(definition.collisionRadius, snapshot.collisionRadius, 0f)
         } finally {
             world.dispose()
             application?.exit()

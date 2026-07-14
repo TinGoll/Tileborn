@@ -95,5 +95,6 @@ class SnapshotInterpolationSystemTest {
         maxHealth = 100f,
         movementSpeed = 4f,
         characterState = CharacterState.ALIVE,
+        collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
     )
 }

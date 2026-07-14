@@ -29,13 +29,17 @@ object PhysicsWorldFactory {
 
     /** Client-side collision proxy for a remote server-authoritative player. */
     fun createKinematicPlayerBody(world: World, x: Float, y: Float): Body {
-        return createCircleBody(
+        return createKinematicCircleBody(
             world = world,
             x = x,
             y = y,
             collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
-            bodyType = BodyDef.BodyType.KinematicBody,
         )
+    }
+
+    /** Client-side collision proxy positioned from authoritative snapshots. */
+    fun createKinematicCircleBody(world: World, x: Float, y: Float, collisionRadius: Float): Body {
+        return createCircleBody(world, x, y, collisionRadius, BodyDef.BodyType.KinematicBody)
     }
 
     fun createDynamicCircleBody(world: World, x: Float, y: Float, collisionRadius: Float): Body {

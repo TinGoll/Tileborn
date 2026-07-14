@@ -5,6 +5,7 @@ import game.shared.ecs.component.CharacterState
 import game.shared.ecs.component.CharacterStateComponent
 import game.shared.ecs.component.HealthComponent
 import game.shared.ecs.component.MovementSpeedComponent
+import game.shared.constants.GameConstants
 import game.shared.protocol.EntitySnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -27,6 +28,7 @@ class CharacterSnapshotApplierTest {
             maxHealth = 120f,
             movementSpeed = 3f,
             characterState = CharacterState.DEAD,
+            collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
         )
 
         CharacterSnapshotApplier.apply(entity, snapshot)

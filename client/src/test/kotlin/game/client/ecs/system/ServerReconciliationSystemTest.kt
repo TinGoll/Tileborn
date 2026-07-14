@@ -131,5 +131,6 @@ class ServerReconciliationSystemTest {
         maxHealth = 100f,
         movementSpeed = GameConstants.PLAYER_MOVE_SPEED,
         characterState = CharacterState.ALIVE,
+        collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
     )
 }

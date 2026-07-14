@@ -39,5 +39,6 @@ class SnapshotBufferTest {
         maxHealth = 100f,
         movementSpeed = 4f,
         characterState = CharacterState.ALIVE,
+        collisionRadius = 0.4f,
     )
 }

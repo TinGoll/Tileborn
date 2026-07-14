@@ -26,7 +26,6 @@ import game.shared.ecs.system.PhysicsSimulationSystem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -92,6 +91,7 @@ class ClientRenderEntityFactoryTest {
                 maxHealth = 100f,
                 movementSpeed = 4f,
                 characterState = CharacterState.ALIVE,
+                collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
             ),
         )
 
@@ -126,6 +126,7 @@ class ClientRenderEntityFactoryTest {
                 maxHealth = 100f,
                 movementSpeed = 4f,
                 characterState = CharacterState.DEAD,
+                collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
             ),
         )
 
@@ -156,6 +157,7 @@ class ClientRenderEntityFactoryTest {
                 maxHealth = 30f,
                 movementSpeed = 2f,
                 characterState = CharacterState.ALIVE,
+                collisionRadius = 0.35f,
                 entityKind = NetworkEntityKind.MOB,
                 definitionId = "slime",
             ),
@@ -166,7 +168,11 @@ class ClientRenderEntityFactoryTest {
         assertEquals(0.25f, render.red, 0f)
         assertEquals(0.85f, render.green, 0f)
         assertEquals(0.3f, render.blue, 0f)
-        assertNull(mob.getComponent(PhysicsBodyComponent::class.java))
+        val physics = mob.getComponent(PhysicsBodyComponent::class.java)
+        assertNotNull(physics)
+        assertEquals(BodyDef.BodyType.KinematicBody, physics.body.type)
+        assertEquals(0.35f, physics.body.fixtureList.single().shape.radius, 0f)
+        assertFalse(physics.synchronizeVelocityWithBody)
         physicsWorld.dispose()
     }
 
@@ -204,6 +210,54 @@ class ClientRenderEntityFactoryTest {
         }
     }
 
+    @Test
+    fun `local player does not pass through remote mob collision proxy`() {
+        val engine = Engine()
+        val physicsWorld = PhysicsWorldFactory.create()
+        val physicsSystem = PhysicsSimulationSystem(physicsWorld)
+        try {
+            val local = ClientRenderEntityFactory.createLocalPlayerFromSnapshot(
+                engine,
+                physicsWorld,
+                playerSnapshot(entityId = 1, x = 0f, velocityX = 4f),
+            )
+            val mobRadius = 0.35f
+            val mob = ClientRenderEntityFactory.createRemoteEntityFromSnapshot(
+                engine,
+                physicsWorld,
+                EntitySnapshot(
+                    entityId = 2,
+                    x = 2f,
+                    y = 0f,
+                    velocityX = 0f,
+                    velocityY = 0f,
+                    currentHealth = 30f,
+                    maxHealth = 30f,
+                    movementSpeed = 2f,
+                    characterState = CharacterState.ALIVE,
+                    collisionRadius = mobRadius,
+                    entityKind = NetworkEntityKind.MOB,
+                    definitionId = "slime",
+                ),
+            )
+            engine.addSystem(physicsSystem)
+
+            repeat(120) { engine.update(GameConstants.PHYSICS_FIXED_TIME_STEP) }
+
+            val localX = local.getComponent(TransformComponent::class.java).x
+            val mobX = mob.getComponent(PhysicsBodyComponent::class.java).body.position.x
+            assertTrue(
+                "Player and mob overlapped on client: local=$localX, mob=$mobX",
+                mobX - localX >= GameConstants.PLAYER_COLLISION_RADIUS + mobRadius - 0.01f,
+            )
+        } finally {
+            engine.removeAllEntities()
+            engine.removeSystem(physicsSystem)
+            physicsSystem.dispose()
+            physicsWorld.dispose()
+        }
+    }
+
     private fun playerSnapshot(entityId: Int, x: Float, velocityX: Float) = EntitySnapshot(
         entityId = entityId,
         x = x,
@@ -214,5 +268,6 @@ class ClientRenderEntityFactoryTest {
         maxHealth = 100f,
         movementSpeed = GameConstants.PLAYER_MOVE_SPEED,
         characterState = CharacterState.ALIVE,
+        collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
     )
 }

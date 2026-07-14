@@ -1,6 +1,7 @@
 package game.desktop
 
 import game.shared.ecs.component.CharacterState
+import game.shared.constants.GameConstants
 import game.client.debug.ConnectionState
 import game.client.network.TcpGameClient
 import game.server.network.TcpGameServer
@@ -104,6 +105,7 @@ class NetworkConnectionSmokeTest {
                             maxHealth = 100f,
                             movementSpeed = 4f,
                             characterState = CharacterState.ALIVE,
+                            collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
                         ),
                     ),
                 )
@@ -172,6 +174,7 @@ class NetworkConnectionSmokeTest {
                         maxHealth = 100f,
                         movementSpeed = 4f,
                         characterState = CharacterState.ALIVE,
+                        collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
                     )
                 },
             )
@@ -398,6 +401,7 @@ class NetworkConnectionSmokeTest {
         maxHealth = 100f,
         movementSpeed = 4f,
         characterState = CharacterState.ALIVE,
+        collisionRadius = GameConstants.PLAYER_COLLISION_RADIUS,
     )
 
     private fun runningServer(

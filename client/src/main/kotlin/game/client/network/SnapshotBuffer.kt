@@ -58,6 +58,7 @@ class SnapshotBuffer(
             maxHealth = second.maxHealth,
             movementSpeed = second.movementSpeed,
             characterState = second.characterState,
+            collisionRadius = second.collisionRadius,
             entityKind = second.entityKind,
             definitionId = second.definitionId,
         )

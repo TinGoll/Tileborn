@@ -12,6 +12,8 @@ data class EntitySnapshot(
     val maxHealth: Float,
     val movementSpeed: Float,
     val characterState: CharacterState,
+    /** Authoritative collision size used by clients for prediction-only Box2D proxies. */
+    val collisionRadius: Float,
     val entityKind: NetworkEntityKind = NetworkEntityKind.PLAYER,
     val definitionId: String? = null,
 )

@@ -54,7 +54,16 @@ object ClientRenderEntityFactory {
             add(NetworkIdentityComponent(networkEntityId = snapshot.entityId.toLong()))
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
-            add(PhysicsBodyComponent(PhysicsWorldFactory.createDynamicPlayerBody(physicsWorld, snapshot.x, snapshot.y)))
+            add(
+                PhysicsBodyComponent(
+                    PhysicsWorldFactory.createDynamicCircleBody(
+                        physicsWorld,
+                        snapshot.x,
+                        snapshot.y,
+                        snapshot.collisionRadius,
+                    ),
+                ),
+            )
             add(PhysicsInterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(PlayerInputComponent())
             add(HealthComponent(snapshot.currentHealth, snapshot.maxHealth))
@@ -79,14 +88,17 @@ object ClientRenderEntityFactory {
             add(TransformComponent(x = snapshot.x, y = snapshot.y))
             add(InterpolatedTransformComponent(x = snapshot.x, y = snapshot.y))
             add(VelocityComponent(x = snapshot.velocityX, y = snapshot.velocityY))
-            if (snapshot.entityKind == NetworkEntityKind.PLAYER) {
-                add(
-                    PhysicsBodyComponent(
-                        body = PhysicsWorldFactory.createKinematicPlayerBody(physicsWorld, snapshot.x, snapshot.y),
-                        synchronizeVelocityWithBody = false,
+            add(
+                PhysicsBodyComponent(
+                    body = PhysicsWorldFactory.createKinematicCircleBody(
+                        physicsWorld,
+                        snapshot.x,
+                        snapshot.y,
+                        snapshot.collisionRadius,
                     ),
-                )
-            }
+                    synchronizeVelocityWithBody = false,
+                ),
+            )
             add(HealthComponent(snapshot.currentHealth, snapshot.maxHealth))
             add(MovementSpeedComponent(snapshot.movementSpeed))
             add(CharacterStateComponent(snapshot.characterState))
@@ -97,7 +109,7 @@ object ClientRenderEntityFactory {
                     red = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.25f else 1f,
                     green = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.85f else 0.55f,
                     blue = if (snapshot.entityKind == NetworkEntityKind.MOB) 0.3f else 0.2f,
-                    radius = GameConstants.PLAYER_COLLISION_RADIUS,
+                    radius = snapshot.collisionRadius,
                 ),
             )
         }.also(engine::addEntity)

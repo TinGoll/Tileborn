@@ -27,6 +27,7 @@ class ProtocolMessagesTest {
             maxHealth = 100f,
             movementSpeed = 4f,
             characterState = CharacterState.ALIVE,
+            collisionRadius = 0.35f,
             entityKind = NetworkEntityKind.MOB,
             definitionId = "slime",
         )
@@ -92,6 +93,7 @@ class ProtocolMessagesTest {
                     maxHealth = 100f,
                     movementSpeed = 4f,
                     characterState = CharacterState.DEAD,
+                    collisionRadius = 0.35f,
                     entityKind = NetworkEntityKind.MOB,
                     definitionId = "slime",
                 ),

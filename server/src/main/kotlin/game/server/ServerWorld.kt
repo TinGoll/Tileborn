@@ -227,6 +227,10 @@ class ServerWorld(
                     val health = entity.getComponent(HealthComponent::class.java) ?: return@mapNotNull null
                     val movementSpeed = entity.getComponent(MovementSpeedComponent::class.java) ?: return@mapNotNull null
                     val characterState = entity.getComponent(CharacterStateComponent::class.java) ?: return@mapNotNull null
+                    val physicsBody = entity.getComponent(PhysicsBodyComponent::class.java)
+                        ?: error("Network entity ${identity.networkEntityId} has no authoritative physics body")
+                    val collisionRadius = physicsBody.body.fixtureList.firstOrNull()?.shape?.radius
+                        ?: error("Network entity ${identity.networkEntityId} has no collision fixture")
                     val definitionId = entity.getComponent(DefinitionIdComponent::class.java)?.definitionId
                     EntitySnapshot(
                         entityId = identity.networkEntityId.toInt(),
@@ -238,6 +242,7 @@ class ServerWorld(
                         maxHealth = health.maxHealth,
                         movementSpeed = movementSpeed.movementSpeed,
                         characterState = characterState.state,
+                        collisionRadius = collisionRadius,
                         entityKind = if (entity.getComponent(MobComponent::class.java) != null) {
                             NetworkEntityKind.MOB
                         } else {
