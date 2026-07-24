@@ -24,7 +24,26 @@ class TiledGameplayMapParser(
             collisionObjects = collisionLayer.objects.map { parseCollision(mapId, it) },
             triggers = triggerLayer.objects.map { parseTrigger(mapId, it) },
             portals = portalLayer.objects.map { parsePortal(mapId, it) },
+            widthWorldUnits = mapSizeInWorldUnits(tiledMap, "width", "tilewidth"),
+            heightWorldUnits = mapSizeInWorldUnits(tiledMap, "height", "tileheight"),
+            navigationCellSizeWorldUnits = tileSizeInWorldUnits(tiledMap),
         )
+    }
+
+    private fun mapSizeInWorldUnits(map: TiledMap, tileCountProperty: String, tileSizeProperty: String): Float {
+        val tileCount = map.properties.get(tileCountProperty)?.toString()?.toIntOrNull() ?: 0
+        val tileSizePixels = map.properties.get(tileSizeProperty)?.toString()?.toFloatOrNull() ?: 0f
+        return WorldUnits.pixelsToMeters(tileCount * tileSizePixels)
+    }
+
+    private fun tileSizeInWorldUnits(map: TiledMap): Float {
+        val tileWidthPixels = map.properties.get("tilewidth")?.toString()?.toFloatOrNull() ?: 0f
+        val tileHeightPixels = map.properties.get("tileheight")?.toString()?.toFloatOrNull() ?: 0f
+        if (tileWidthPixels <= 0f || tileHeightPixels <= 0f) return 1f
+        require(tileWidthPixels == tileHeightPixels) {
+            "Navigation grid requires square Tiled tiles, was ${tileWidthPixels}x$tileHeightPixels px"
+        }
+        return WorldUnits.pixelsToMeters(tileWidthPixels)
     }
 
     private fun parseNpcSpawnPoint(mapId: String, mapObject: MapObject): NpcSpawnPoint {

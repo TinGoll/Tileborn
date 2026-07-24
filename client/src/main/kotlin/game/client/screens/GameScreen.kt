@@ -1,6 +1,7 @@
 package game.client.screens
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
 import com.badlogic.ashley.core.ComponentMapper
 import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.OrthographicCamera
@@ -12,6 +13,7 @@ import game.client.assets.GameAssetManager
 import game.client.debug.DebugOverlay
 import game.client.debug.DebugOverlaySnapshotBuilder
 import game.client.debug.ConnectionState
+import game.client.debug.NavigationGridDebugController
 import game.client.ecs.ClientEcsWorld
 import game.client.ecs.ClientEntityRegistry
 import game.client.ecs.ClientRenderEntityFactory
@@ -61,6 +63,7 @@ class GameScreen(
     private var primitiveRenderSystem: PrimitiveRenderSystem? = null
     private var physicsDebugRenderer: Box2DDebugRenderer? = null
     private var debugOverlay: DebugOverlay? = null
+    private var navigationGridDebugController: NavigationGridDebugController? = null
     private val collisionBodies = mutableListOf<Body>()
     private val screenEntities = mutableListOf<Entity>()
     private val networkEntities = ClientEntityRegistry()
@@ -92,6 +95,7 @@ class GameScreen(
 
             collisionBodies += TiledCollisionLoader(ecsWorld.physicsWorld).load(mapData!!)
             screenEntities += ClientRenderEntityFactory.createDebugCollisionGeometry(ecsWorld.engine, mapData!!)
+            navigationGridDebugController = NavigationGridDebugController(ecsWorld.engine, mapData!!)
 
             cameraFollowSystem = CameraFollowSystem(camera).also(ecsWorld.engine::addSystem)
             mapRenderSystem = MapRenderSystem(camera, mapRenderer!!).also(ecsWorld.engine::addSystem)
@@ -115,6 +119,7 @@ class GameScreen(
 
     override fun render(delta: Float) {
         clearScreen(red = 0.7f, green = 0.7f, blue = 0.7f)
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) toggleNavigationGrid()
         applyLatestSnapshot()
         applyGameEvents()
         applyCombatEvents()
@@ -137,6 +142,8 @@ class GameScreen(
 
     override fun dispose() {
         Gdx.app?.log("GameScreen", "Disposing game screen; closing network client")
+        navigationGridDebugController?.dispose()
+        navigationGridDebugController = null
         screenEntities.forEach(ecsWorld.engine::removeEntity)
         screenEntities.clear()
         networkEntities.clear().forEach(ecsWorld.engine::removeEntity)
@@ -167,6 +174,18 @@ class GameScreen(
         ecsWorld.predictedInputBuffer.clear()
         touchControls?.dispose()
     }
+
+    /** F4 on desktop calls this; Android debug UI can use the same public hook. */
+    fun toggleNavigationGrid() {
+        navigationGridDebugController?.toggle()
+    }
+
+    fun setNavigationGridVisible(visible: Boolean) {
+        navigationGridDebugController?.setVisible(visible)
+    }
+
+    val isNavigationGridVisible: Boolean
+        get() = navigationGridDebugController?.visible == true
 
     private fun sendLocalInput() {
         ecsWorld.clientPredictionSystem.drainOutgoingCommands().forEach(networkClient::sendInput)

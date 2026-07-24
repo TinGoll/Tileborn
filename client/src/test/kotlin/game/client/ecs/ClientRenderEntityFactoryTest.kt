@@ -74,6 +74,29 @@ class ClientRenderEntityFactoryTest {
     }
 
     @Test
+    fun `debug navigation grid creates lines for every row and column boundary`() {
+        val engine = Engine()
+        val mapData = GameMapData(
+            mapId = "debug",
+            spawnPoints = emptyList(),
+            collisionObjects = emptyList(),
+            triggers = emptyList(),
+            portals = emptyList(),
+            widthWorldUnits = 3f,
+            heightWorldUnits = 2f,
+            navigationCellSizeWorldUnits = 1f,
+        )
+
+        val lines = ClientRenderEntityFactory.createDebugNavigationGrid(engine, mapData)
+
+        assertEquals(7, lines.size)
+        assertEquals(7, engine.entities.size())
+        assertTrue(lines.all {
+            it.getComponent(RenderPrimitiveComponent::class.java).shape == PrimitiveShape.LINE
+        })
+    }
+
+    @Test
     fun `local player created from snapshot is visible and keeps server entity id`() {
         val engine = Engine()
         val physicsWorld = PhysicsWorldFactory.create()

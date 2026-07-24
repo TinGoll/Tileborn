@@ -8,6 +8,9 @@ data class GameMapData(
     val triggers: List<MapTrigger>,
     val portals: List<MapPortal>,
     val npcSpawnPoints: List<NpcSpawnPoint> = emptyList(),
+    val widthWorldUnits: Float = 0f,
+    val heightWorldUnits: Float = 0f,
+    val navigationCellSizeWorldUnits: Float = 1f,
 ) {
     fun requireSpawnPoint(spawnId: String): MapSpawnPoint =
         spawnPoints.firstOrNull { it.spawnId == spawnId }

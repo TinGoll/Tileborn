@@ -23,6 +23,7 @@ import game.shared.physics.PhysicsWorldFactory
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.NetworkEntityKind
 import game.shared.constants.GameConstants
+import game.shared.navigation.NavigationGrid
 
 /** Creates the temporary primitive-rendered entities used by the client MVP. */
 object ClientRenderEntityFactory {
@@ -136,4 +137,51 @@ object ClientRenderEntityFactory {
                 )
             }.also(engine::addEntity)
         }
+
+    /** Client-only visualization of the shared navigation grid; it never changes navigation state. */
+    fun createDebugNavigationGrid(engine: Engine, mapData: GameMapData): List<Entity> {
+        val grid = NavigationGrid.fromMap(mapData)
+        val lines = mutableListOf<Entity>()
+        for (column in 0..grid.columns) {
+            lines += debugGridLine(
+                engine = engine,
+                x = column * grid.cellSize,
+                y = 0f,
+                endOffsetX = 0f,
+                endOffsetY = grid.worldHeight,
+            )
+        }
+        for (row in 0..grid.rows) {
+            lines += debugGridLine(
+                engine = engine,
+                x = 0f,
+                y = row * grid.cellSize,
+                endOffsetX = grid.worldWidth,
+                endOffsetY = 0f,
+            )
+        }
+        return lines
+    }
+
+    private fun debugGridLine(
+        engine: Engine,
+        x: Float,
+        y: Float,
+        endOffsetX: Float,
+        endOffsetY: Float,
+    ): Entity = engine.createEntity().apply {
+        add(TransformComponent(x = x, y = y))
+        add(
+            RenderPrimitiveComponent(
+                shape = PrimitiveShape.LINE,
+                red = 0.25f,
+                green = 0.35f,
+                blue = 0.45f,
+                alpha = 0.35f,
+                lineEndOffsetX = endOffsetX,
+                lineEndOffsetY = endOffsetY,
+                lineWidth = 0.02f,
+            ),
+        )
+    }.also(engine::addEntity)
 }

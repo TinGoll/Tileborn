@@ -67,6 +67,25 @@ class TiledGameplayMapParserTest {
     }
 
     @Test
+    fun `map dimensions and navigation cell size are converted to world units`() {
+        val map = completeMap().apply {
+            properties.put("width", 12)
+            properties.put("height", 8)
+            properties.put("tilewidth", 32)
+            properties.put("tileheight", 32)
+        }
+        try {
+            val result = TiledGameplayMapParser().parse("test_map", map)
+
+            assertEquals(12f, result.widthWorldUnits, 0f)
+            assertEquals(8f, result.heightWorldUnits, 0f)
+            assertEquals(1f, result.navigationCellSizeWorldUnits, 0f)
+        } finally {
+            map.dispose()
+        }
+    }
+
+    @Test
     fun `missing required layer is logged and rejected`() {
         val messages = mutableListOf<String>()
         val map = TiledMap()

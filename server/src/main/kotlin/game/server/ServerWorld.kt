@@ -24,6 +24,7 @@ import game.shared.ecs.component.MovementSpeedComponent
 import game.shared.ecs.component.NetworkIdentityComponent
 import game.shared.ecs.component.PhysicsBodyComponent
 import game.shared.ecs.component.PlayerInputComponent
+import game.shared.ecs.component.PathComponent
 import game.shared.ecs.component.TransformComponent
 import game.shared.ecs.component.VelocityComponent
 import game.shared.input.InputCommandValidator
@@ -33,6 +34,7 @@ import game.shared.map.TiledGameplayMapParser
 import game.shared.map.interactableById
 import game.shared.physics.PhysicsWorldFactory
 import game.shared.physics.TiledCollisionLoader
+import game.shared.navigation.NavigationGrid
 import game.shared.protocol.EntitySnapshot
 import game.shared.protocol.AttackCommand
 import game.shared.protocol.CombatEvent
@@ -52,6 +54,7 @@ class ServerWorld(
     private val ecsWorld: ServerEcsWorld = ServerEcsWorld(),
 ) : Disposable {
     val gameMapData: GameMapData
+    val navigationGrid: NavigationGrid
     val engine = ecsWorld.engine
     private val latestReceivedInputByEntityId = mutableMapOf<Int, Long>()
     private val lastSimulatedInputByEntityId = mutableMapOf<Int, Long>()
@@ -64,6 +67,8 @@ class ServerWorld(
             tiledMap.dispose()
         }
         TiledCollisionLoader(ecsWorld.physicsWorld).load(gameMapData)
+        navigationGrid = NavigationGrid.fromMap(gameMapData)
+        ecsWorld.configureNavigation(navigationGrid)
         // DefinitionRegistry.empty() remains useful for focused world tests that do not exercise
         // definitions. Production startup always supplies the loaded, validated registry.
         val managedNpcSpawnPoints = if (definitionRegistry.mobCount == 0) emptyList() else gameMapData.npcSpawnPoints
@@ -131,6 +136,7 @@ class ServerWorld(
                 add(MovementSpeedComponent(definition.movementSpeed))
                 add(CharacterStateComponent())
                 add(VelocityComponent())
+                add(PathComponent(definition.collisionRadius))
                 add(
                     AttackComponent(
                         range = definition.attackRadius,

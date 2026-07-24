@@ -28,6 +28,7 @@ On Windows, use `gradlew.bat build`.
 The first technical MVP includes a dedicated authoritative server, desktop and Android
 clients, Tiled/Box2D wall collision, local prediction, remote interpolation, reconnect,
 and the F3 debug overlay (FPS, ping, server tick, position, and entity counts).
+Press F4 on desktop to hide or show the navigation grid independently of the overlay.
 
 Start the server with `gradlew.bat :server:run`, then start the desktop client with
 `gradlew.bat :desktop:run`. The desktop client uses `127.0.0.1:54555` by default and

@@ -14,7 +14,7 @@ import game.server.ecs.system.DamageSystem
 import game.server.ecs.system.HealthSystem
 import game.server.ecs.system.MobAiSystem
 import game.server.ecs.system.MobDespawnSystem
-import game.server.ecs.system.MobMovementIntentSystem
+import game.server.ecs.system.PathFollowSystem
 import game.server.ecs.system.MobSpawnSystem
 import game.server.ecs.system.TargetAcquisitionSystem
 import game.shared.definition.DefinitionRegistry
@@ -22,6 +22,7 @@ import game.shared.map.NpcSpawnPoint
 import game.shared.ecs.system.MovementSystem
 import game.shared.ecs.system.PhysicsSimulationSystem
 import game.shared.physics.PhysicsWorldFactory
+import game.shared.navigation.NavigationGrid
 
 /** Owns the authoritative ECS engine and its explicitly ordered systems. */
 class ServerEcsWorld : Disposable {
@@ -37,6 +38,8 @@ class ServerEcsWorld : Disposable {
     val attackValidationSystem = AttackValidationSystem(combatEventSystem)
     var mobSpawnSystem: MobSpawnSystem? = null
         private set
+    var pathFollowSystem: PathFollowSystem? = null
+        private set
 
     val engine: Engine = Engine().apply {
         addSystem(ServerInitializationSystem())
@@ -49,9 +52,13 @@ class ServerEcsWorld : Disposable {
         addSystem(attackValidationSystem)
         addSystem(damageSystem)
         addSystem(combatEventSystem)
-        addSystem(MobMovementIntentSystem())
         addSystem(MovementSystem())
         addSystem(physicsSimulationSystem)
+    }
+
+    fun configureNavigation(navigationGrid: NavigationGrid) {
+        check(pathFollowSystem == null) { "Navigation is already configured" }
+        pathFollowSystem = PathFollowSystem(navigationGrid).also(engine::addSystem)
     }
 
     fun configureMobLifecycle(

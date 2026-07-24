@@ -489,6 +489,16 @@ GameMapData
 
 This model should be usable by the server without requiring rendering logic.
 
+### Navigation grid
+
+`NavigationGrid` is built from `GameMapData` tile dimensions and collision rectangles. `Pathfinder`
+uses four-way A* movement and tests walkability with the requesting entity's collision radius, so
+map bounds and obstacle clearance remain authoritative server concerns. `PathFollowSystem` owns mob
+path requests and velocity intent; it replans at most twice per second by default, or after the target
+has moved to another cell by a meaningful distance. An unavailable path stops the mob and is retried
+after the same cooldown. The client may render grid lines in debug mode, but rendering does not feed
+back into navigation state.
+
 ---
 
 ## Physics architecture
