@@ -1,27 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="12">
- <layer id="1" name="ground" width="10" height="10">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="20">
+ <layer id="1" name="ground" width="30" height="20">
   <data encoding="csv">
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
  <objectgroup id="2" name="collision">
-  <object id="1" name="south_wall" x="0" y="288" width="320" height="32"/>
-  <object id="2" name="north_wall" x="0" y="0" width="320" height="32"/>
-  <object id="3" name="west_wall" x="0" y="32" width="32" height="256"/>
-  <object id="4" name="east_wall" x="288" y="32" width="32" height="256"/>
+  <object id="1" name="south_wall" x="0" y="608" width="960" height="32"/>
+  <object id="2" name="north_wall" x="0" y="0" width="960" height="32"/>
+  <object id="3" name="west_wall" x="0" y="32" width="32" height="576"/>
+  <object id="4" name="east_wall" x="928" y="32" width="32" height="576"/>
+  <object id="8" name="west_detour_wall" x="224" y="384" width="32" height="192"/>
+  <object id="12" name="central_block" x="384" y="256" width="160" height="160"/>
+  <object id="13" name="north_gate_left" x="96" y="128" width="224" height="32"/>
+  <object id="14" name="north_gate_right" x="384" y="128" width="192" height="32"/>
+  <object id="15" name="east_detour_wall" x="672" y="320" width="32" height="256"/>
+  <object id="16" name="lower_cross_wall" x="448" y="512" width="224" height="32"/>
+  <object id="17" name="dead_end_back" x="832" y="96" width="32" height="224"/>
+  <object id="18" name="dead_end_south_arm" x="704" y="288" width="128" height="32"/>
+  <object id="19" name="dead_end_north_arm" x="704" y="96" width="128" height="32"/>
  </objectgroup>
  <objectgroup id="3" name="spawn_points">
-  <object id="5" name="default_spawn" type="spawn" x="160" y="160">
+  <object id="5" name="default_spawn" type="spawn" x="160" y="480">
    <properties>
     <property name="spawnId" value="default"/>
    </properties>
@@ -29,7 +48,7 @@
   </object>
  </objectgroup>
  <objectgroup id="4" name="triggers">
-  <object id="6" name="welcome_trigger" type="message" x="128" y="128" width="64" height="64">
+  <object id="6" name="welcome_trigger" type="message" x="128" y="448" width="64" height="64">
    <properties>
     <property name="triggerId" value="welcome"/>
     <property name="type" value="message"/>
@@ -37,7 +56,7 @@
   </object>
  </objectgroup>
  <objectgroup id="5" name="portals">
-  <object id="7" name="debug_exit" type="portal" x="256" y="128" width="32" height="64">
+  <object id="7" name="debug_exit" type="portal" x="256" y="448" width="32" height="64">
    <properties>
     <property name="portalId" value="debug_exit"/>
     <property name="targetMap" value="debug_map"/>
@@ -46,33 +65,33 @@
   </object>
  </objectgroup>
  <objectgroup id="6" name="npc_spawn_points">
-  <object id="9" name="slime_north_west" type="mob_spawn" x="96" y="96">
+  <object id="9" name="slime_west_detour" type="mob_spawn" x="320" y="480">
    <properties>
     <property name="maxAlive" type="int" value="1"/>
     <property name="mobDefinitionId" value="slime"/>
     <property name="respawnSeconds" type="float" value="5"/>
     <property name="spawnRadius" type="float" value="0"/>
-    <property name="spawnId" value="slime_north_west"/>
+    <property name="spawnId" value="slime_west_detour"/>
    </properties>
    <point/>
   </object>
-  <object id="10" name="slime_north_east" type="mob_spawn" x="224" y="96">
+  <object id="10" name="slime_central_north" type="mob_spawn" x="480" y="192">
    <properties>
     <property name="maxAlive" type="int" value="1"/>
     <property name="mobDefinitionId" value="slime"/>
     <property name="respawnSeconds" type="float" value="5"/>
     <property name="spawnRadius" type="float" value="0"/>
-    <property name="spawnId" value="slime_north_east"/>
+    <property name="spawnId" value="slime_central_north"/>
    </properties>
    <point/>
   </object>
-  <object id="11" name="slime_south_east" type="mob_spawn" x="224" y="224">
+  <object id="11" name="slime_dead_end" type="mob_spawn" x="800" y="224">
    <properties>
     <property name="maxAlive" type="int" value="1"/>
     <property name="mobDefinitionId" value="slime"/>
     <property name="respawnSeconds" type="float" value="5"/>
     <property name="spawnRadius" type="float" value="0"/>
-    <property name="spawnId" value="slime_south_east"/>
+    <property name="spawnId" value="slime_dead_end"/>
    </properties>
    <point/>
   </object>
